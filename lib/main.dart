@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
 import 'core/router.dart';
-import 'screens/auth/login_screen.dart';
+/* import 'screens/auth/login_screen.dart'; */
 import 'screens/home/home_screen.dart';
 
 Future<void> main() async {
@@ -26,14 +26,14 @@ class KrishokApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final session = Supabase.instance.client.auth.currentSession;
+    /* final session = Supabase.instance.client.auth.currentSession; */
 
     return MaterialApp(
       title: 'Krishok',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routes: AppRouter.routes,
-      home: session != null ? const HomeScreen() : const LoginScreen(),
+      initialRoute: AppRouter.home,
     );
   }
 }

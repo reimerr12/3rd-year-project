@@ -1,0 +1,884 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import "../../core/theme.dart";
+
+// ─────────────────────────────────────────────
+//  Dummy data helpers
+// ─────────────────────────────────────────────
+
+class _Crop {
+  final String name;
+  final Color color;
+  final Color bgColor;
+  const _Crop(this.name, this.color, this.bgColor);
+}
+
+const _dummyCrops = [
+  _Crop('মরিচ', Color(0xFFE53935), Color(0xFFFFEBEE)),
+  _Crop('টমেটো', Color(0xFFFF7043), Color(0xFFFBE9E7)),
+  _Crop('ধান', Color(0xFFF9A825), Color(0xFFFFFDE7)),
+  _Crop('বেগুন', Color(0xFF7B1FA2), Color(0xFFF3E5F5)),
+];
+
+class _Product {
+  final String name;
+  final String price;
+  final String unit;
+  final double rating;
+  final int reviews;
+  final String badge;
+  final Color badgeColor;
+  const _Product({
+    required this.name,
+    required this.price,
+    required this.unit,
+    required this.rating,
+    required this.reviews,
+    required this.badge,
+    required this.badgeColor,
+  });
+}
+
+const _dummyProducts = [
+  _Product(
+    name: 'সেচ পাম্প',
+    price: '৳১২,৫০০',
+    unit: '',
+    rating: 4.5,
+    reviews: 120,
+    badge: 'জনপ্রিয়',
+    badgeColor: AppTheme.primaryGreen,
+  ),
+  _Product(
+    name: 'উন্নত বীজ',
+    price: '৳৮৫০',
+    unit: '/কেজি',
+    rating: 4.8,
+    reviews: 85,
+    badge: 'নতুন',
+    badgeColor: AppTheme.primaryGreen,
+  ),
+];
+
+class _VideoItem {
+  final String title;
+  final String subtitle;
+  final String duration;
+  const _VideoItem(this.title, this.subtitle, this.duration);
+}
+
+const _dummyVideos = [
+  _VideoItem(
+    'কিভাবে সঠিকভাবে কীটনাশক ব্যবহার করবেন',
+    '২.৫ হাজার views • ২ দিন আগে',
+    '5:32',
+  ),
+  _VideoItem(
+    'কিভাবে সঠিকভাবে কীটনাশক ব্যবহার করবেন',
+    '২.৫ হাজার views • ২ দিন আগে',
+    '5:32',
+  ),
+];
+
+class _BannerItem {
+  final String headline;
+  final String subline;
+  final Color startColor;
+  final Color endColor;
+  const _BannerItem(
+      this.headline, this.subline, this.startColor, this.endColor);
+}
+
+const _banners = [
+  _BannerItem(
+    'একসাথে কিনলে ছাড়!',
+    'ধানে অফার!',
+    AppTheme.primaryGreen,
+    Color(0xFF1B5E20),
+  ),
+  _BannerItem(
+    'নতুন বীজ পাওয়া যাচ্ছে',
+    'সেরা মানের বীজ!',
+    AppTheme.skyBlue,
+    Color(0xFF0D47A1),
+  ),
+  _BannerItem(
+    'কৃষি সরঞ্জামে ৩০% ছাড়',
+    'সীমিত সময়ের অফার!',
+    Color(0xFF7B1FA2),
+    Color(0xFF4A148C),
+  ),
+];
+
+// ─────────────────────────────────────────────
+//  Main screen
+// ─────────────────────────────────────────────
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5FAF5),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _TopBar(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SearchBar(),
+                    const SizedBox(height: 14),
+                    _PromoCarousel(),
+                    const _SectionHeader(title: 'এই মৌসুমের সেরা ফসল'),
+                    _CropRow(),
+                    const _SectionHeader(
+                      title: 'বিশেষ সেবা ও পণ্য',
+                      actionLabel: 'সব দেখুন',
+                    ),
+                    _ProductRow(),
+                    const _SectionHeader(
+                      title: 'শেখার ভিডিও',
+                      actionLabel: 'সব দেখুন',
+                    ),
+                    _VideoList(),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _BottomNav(
+        selectedIndex: _selectedIndex,
+        onTap: (i) => setState(() => _selectedIndex = i),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        backgroundColor: AppTheme.primaryGreen,
+        child: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Top bar
+// ─────────────────────────────────────────────
+
+class _TopBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF5FAF5),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Text(
+                  'আসসালামু আলাইকুম, কৃষক!',
+                  style: TextStyle(
+                    color: AppTheme.primaryGreen,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Stack(
+                children: [
+                  const Icon(
+                    Icons.notifications_outlined,
+                    color: AppTheme.primaryGreen,
+                    size: 26,
+                  ),
+                  Positioned(
+                    right: 2,
+                    top: 2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.warningAmber,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0x130288D1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cloud_outlined,
+                            color: AppTheme.skyBlue, size: 14),
+                        SizedBox(width: 4),
+                        Text(
+                          'বৃষ্টির সম্ভাবনা আছে',
+                          style:
+                              TextStyle(color: AppTheme.skyBlue, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '২৭°–৩২°C',
+                      style: TextStyle(
+                        color: AppTheme.skyBlue,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {},
+                child: const Row(
+                  children: [
+                    Icon(Icons.near_me_outlined,
+                        color: AppTheme.primaryGreen, size: 20),
+                    SizedBox(width: 4),
+                    Text(
+                      'সিলেট',
+                      style: TextStyle(
+                        color: AppTheme.primaryGreen,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Search bar
+// ─────────────────────────────────────────────
+
+class _SearchBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF5FAF5),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0F0F0),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 14),
+            const Icon(Icons.search, color: Color(0xFF9E9E9E), size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'পণ্য বা সেবা খুঁজুন...',
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Promo carousel
+// ─────────────────────────────────────────────
+
+class _PromoCarousel extends StatefulWidget {
+  @override
+  State<_PromoCarousel> createState() => _PromoCarouselState();
+}
+
+class _PromoCarouselState extends State<_PromoCarousel> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      final next = (_currentPage + 1) % _banners.length;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(seconds: 5),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 130,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _banners.length,
+            onPageChanged: (i) => setState(() => _currentPage = i),
+            itemBuilder: (context, index) =>
+                _BannerCard(banner: _banners[index]),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_banners.length, (i) {
+            final active = i == _currentPage;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: active ? 20 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: active ? AppTheme.primaryGreen : const Color(0xFFBDBDBD),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+class _BannerCard extends StatelessWidget {
+  final _BannerItem banner;
+  const _BannerCard({required this.banner});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [banner.startColor, banner.endColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -10,
+            top: -10,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color.fromARGB(18, 255, 255, 255),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 40,
+            bottom: -20,
+            child: Container(
+              width: 70,
+              height: 70,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color.fromARGB(13, 255, 255, 255),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        banner.headline,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        banner.subline,
+                        style: const TextStyle(
+                          color: Color.fromARGB(204, 255, 255, 255),
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 30,
+                        child: ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppTheme.primaryGreen,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            minimumSize: Size.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: const Text(
+                            'দেখুন',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: const BoxDecoration(
+                    color: Color.fromARGB(38, 255, 255, 255),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person_outline,
+                    color: Color.fromARGB(140, 255, 255, 255),
+                    size: 40,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Section header
+// ─────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String? actionLabel;
+
+  const _SectionHeader({required this.title, this.actionLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1B1B1B),
+            ),
+          ),
+          if (actionLabel != null)
+            Text(
+              actionLabel!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.primaryGreen,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Crop circles row
+// ─────────────────────────────────────────────
+
+class _CropRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 84,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: _dummyCrops.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 16),
+        itemBuilder: (context, i) {
+          final crop = _dummyCrops[i];
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: crop.bgColor,
+                  border: Border.all(color: crop.color, width: 1.5),
+                ),
+                child: Icon(Icons.grass, color: crop.color, size: 26),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                crop.name,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Product cards row
+// ─────────────────────────────────────────────
+
+class _ProductRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 175,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: _dummyProducts.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, i) => _ProductCard(product: _dummyProducts[i]),
+      ),
+    );
+  }
+}
+
+class _ProductCard extends StatelessWidget {
+  final _Product product;
+  const _ProductCard({required this.product});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 145,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromARGB(18, 0, 0, 0),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              Container(
+                height: 95,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.image_outlined,
+                    color: Color(0xFFBDBDBD),
+                    size: 36,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: product.badgeColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    product.badge,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.name,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      color: AppTheme.warningAmber,
+                      size: 13,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${product.rating}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      ' (${product.reviews})',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${product.price}${product.unit}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryGreen,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Video list
+// ─────────────────────────────────────────────
+
+class _VideoList extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _dummyVideos.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, i) => _VideoCard(video: _dummyVideos[i]),
+    );
+  }
+}
+
+class _VideoCard extends StatelessWidget {
+  final _VideoItem video;
+  const _VideoCard({required this.video});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromARGB(15, 0, 0, 0),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                height: 150,
+                decoration: const BoxDecoration(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                  gradient: LinearGradient(
+                    colors: [AppTheme.primaryGreen, AppTheme.lightGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color.fromARGB(230, 255, 255, 255),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: AppTheme.primaryGreen,
+                  size: 30,
+                ),
+              ),
+              Positioned(
+                right: 10,
+                bottom: 10,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(178, 0, 0, 0),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    video.duration,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  video.title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1B1B1B),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  video.subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF9E9E9E),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Bottom navigation
+// ─────────────────────────────────────────────
+
+class _BottomNav extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  const _BottomNav({required this.selectedIndex, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'হোম'),
+      BottomNavigationBarItem(icon: Icon(Icons.store_outlined), label: 'বাজার'),
+      BottomNavigationBarItem(
+          icon: Icon(Icons.agriculture_outlined), label: 'সেবা'),
+      BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline), label: 'প্রোফাইল'),
+    ];
+
+    return BottomNavigationBar(
+      currentIndex: selectedIndex,
+      onTap: onTap,
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: AppTheme.primaryGreen,
+      unselectedItemColor: const Color(0xFF9E9E9E),
+      selectedFontSize: 10,
+      unselectedFontSize: 10,
+      backgroundColor: Colors.white,
+      elevation: 12,
+      items: items,
+    );
+  }
+}
+
