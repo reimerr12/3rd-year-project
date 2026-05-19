@@ -258,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildTopBar(context),
 
               // 2. WEATHER SECTION (WhatsApp Style)
-              // Displays horizontal hourly pills with the active hour highlighted in blue
+              // Displays horizontal hourly pills with the active hour highlighted in green
               _buildWeatherSection(context),
 
               // 3. SEARCH BAR
@@ -378,10 +378,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Weather BAR
+  // WEATHER SECTION
   // -------------------------------------------------------------------------
 
-  // 3. New Hourly Weather Section
   // TODO(weather): Replace dummy `hourly` list with:
   //   ref.watch(weatherProvider).hourlyForecast
   //   Model: lib/models/weather.dart → HourlyWeather { time, tempCelsius, condition }
@@ -394,12 +393,11 @@ class _HomeScreenState extends State<HomeScreen> {
   //   State: add `bool _showTomorrow = false;` or a small Riverpod StateProvider
   // TODO(weather): Pull user's lat/lng for weather query from:
   //   ref.watch(locationProvider) — request permission on first launch
-
   Widget _buildWeatherSection(BuildContext context) {
     final hourly = [
       _HourlyWeather('12:00', '26', Icons.wb_cloudy_outlined),
       _HourlyWeather('02:00', '28', Icons.wb_cloudy,
-          isActive: true), // Blue card
+          isActive: true), // Active card highlighted in green
       _HourlyWeather('04:00', '23', Icons.thunderstorm_outlined),
       _HourlyWeather('06:00', '26', Icons.wb_sunny_outlined),
       _HourlyWeather('08:00', '27', Icons.wb_cloudy_outlined),
@@ -424,8 +422,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Row(
                   children: [
                     Text('Next 7 Days',
-                        style: TextStyle(color: Colors.blue, fontSize: 12)),
-                    Icon(Icons.chevron_right, size: 16, color: Colors.blue),
+                        // ── CHANGED: was Colors.blue → AppTheme.primaryGreen ──
+                        style: TextStyle(
+                            color: AppTheme.primaryGreen, fontSize: 12)),
+                    Icon(Icons.chevron_right,
+                        size: 16,
+                        // ── CHANGED: was Colors.blue → AppTheme.primaryGreen ──
+                        color: AppTheme.primaryGreen),
                   ],
                 ),
               )
@@ -446,17 +449,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 4. Individual Weather Card Widget
   // TODO(weather): Replace _HourlyWeather dummy model with real HourlyWeather from lib/models/weather.dart
   // TODO(weather): tempCelsius should display as '${w.temp}°C' or toggle °F based on user prefs
-
   Widget _buildWeatherCard(_HourlyWeather w) {
     return Container(
       width: 52,
       margin: const EdgeInsets.only(right: 12),
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: w.isActive ? Colors.blue : Colors.white, // Active state blue
+        // ── CHANGED: active card was Colors.blue → AppTheme.primaryGreen ──
+        color: w.isActive ? AppTheme.primaryGreen : Colors.white,
         borderRadius: BorderRadius.circular(25), // Pill shape
         boxShadow: const [
           BoxShadow(
@@ -475,7 +477,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontSize: 9)),
           const SizedBox(height: 6),
           Icon(w.icon,
-              color: w.isActive ? Colors.white : Colors.blueAccent, size: 18),
+              // ── CHANGED: inactive icon was Colors.blueAccent → AppTheme.primaryGreen ──
+              color: w.isActive ? Colors.white : AppTheme.primaryGreen,
+              size: 18),
           const SizedBox(height: 6),
           Text('${w.temp}°',
               style: TextStyle(
@@ -486,6 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   // -------------------------------------------------------------------------
   // SEARCH BAR
   // -------------------------------------------------------------------------
@@ -502,7 +507,8 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              // ── CHANGED: withOpacity(0.05) → withValues(alpha: 0.05) ──
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -597,7 +603,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 70,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: crop.bgColor.withOpacity(0.3),
+                            // ── CHANGED: withOpacity(0.3) → withValues(alpha: 0.3) ──
+                            color: crop.bgColor.withValues(alpha: 0.3),
                             border: Border.all(
                               color: crop.color,
                               width: 1.5,
@@ -723,7 +730,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    // ── CHANGED: withOpacity(0.05) → withValues(alpha: 0.05) ──
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -793,7 +801,8 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  // ── CHANGED: withOpacity(0.04) → withValues(alpha: 0.04) ──
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -824,7 +833,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryGreen.withOpacity(0.9),
+                            // ── CHANGED: withOpacity(0.9) → withValues(alpha: 0.9) ──
+                            color: AppTheme.primaryGreen.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -918,6 +928,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   // -------------------------------------------------------------------------
   // BOTTOM NAV
   // -------------------------------------------------------------------------
@@ -932,7 +943,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            // ── CHANGED: withOpacity(0.08) → withValues(alpha: 0.08) ──
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, -4), // Shadow pushed upwards
           ),
@@ -1152,7 +1164,8 @@ class _BannerCard extends StatelessWidget {
                             width: 85,
                             height: 85,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              // ── CHANGED: withOpacity(0.2) → withValues(alpha: 0.2) ──
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
@@ -1160,7 +1173,8 @@ class _BannerCard extends StatelessWidget {
                       width: 85,
                       height: 85,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        // ── CHANGED: withOpacity(0.2) → withValues(alpha: 0.2) ──
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.image_outlined,

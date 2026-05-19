@@ -1,7 +1,8 @@
 class AppConstants {
   // Supabase
-  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
-  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  static const String supabaseUrl = 'https://ghbdqzdcgkafuivacxif.supabase.co';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdoYmRxemRjZ2thZnVpdmFjeGlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNzYzNTksImV4cCI6MjA5NDc1MjM1OX0.bKoKAxERcBFfNh8LwW3f9EsHWIv9jRaZRQsU0VQN_CM';
 
   // Anthropic Claude
   static const String claudeApiKey = 'YOUR_CLAUDE_API_KEY';
