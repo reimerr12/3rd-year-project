@@ -1,20 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../models/weather.dart';
+import '../../providers/weather_provider.dart';
 
 // ---------------------------------------------------------------------------
 // IMPORTS — uncomment as each system is wired up
 // ---------------------------------------------------------------------------
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
 // import '../../providers/auth_provider.dart';
 // import '../../providers/crop_calendar_provider.dart';
 // import '../../providers/marketplace_provider.dart';
-// import '../../providers/weather_provider.dart';
 // import '../../models/crop_calendar.dart';
 // import '../../models/product.dart';
 // import 'package:cached_network_image/cached_network_image.dart';
-// import 'package:intl/intl.dart';
 
 // ---------------------------------------------------------------------------
 // DUMMY DATA MODELS
@@ -65,15 +66,6 @@ class _MarketProduct {
     required this.badge,
     required this.imageUrl,
   });
-}
-
-class _HourlyWeather {
-  final String time;
-  final String temp;
-  final IconData icon;
-  final bool isActive;
-
-  _HourlyWeather(this.time, this.temp, this.icon, {this.isActive = false});
 }
 
 /// Mirrors a row from the `promotions` Supabase table.
@@ -205,21 +197,18 @@ final List<_BannerItem> _dummyBanners = [
 // ---------------------------------------------------------------------------
 // HOME SCREEN
 //
-// When Riverpod is wired, convert:
-//   class HomeScreen extends StatefulWidget
-//   →  class HomeScreen extends ConsumerStatefulWidget
-//   class _HomeScreenState extends State<HomeScreen>
-//   →  class _HomeScreenState extends ConsumerState<HomeScreen>
+// Riverpod wired: ConsumerStatefulWidget + ConsumerState
 // ---------------------------------------------------------------------------
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _showTomorrow = false;
   int _currentTabIndex = 0;
 
   void _onTabTapped(int index) {
@@ -237,6 +226,58 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
     }
     setState(() => _currentTabIndex = index);
+  }
+
+  IconData _iconFromCode(String iconCode) {
+    // OpenWeather map codes: https://openweathermap.org/weather-conditions
+    switch (iconCode) {
+      // Clear Sky
+      case '01d':
+        return Icons.wb_sunny_rounded; // Bright sun daytime
+      case '01n':
+        return Icons.nightlight_round; // Clear moon night
+
+      // Clouds (Few / Scattered / Broken)
+      case '02d':
+      case '03d':
+        return Icons.wb_cloudy_rounded; // Sun behind cloud
+      case '02n':
+      case '03n':
+        return Icons.cloud_queue_rounded; // Night clouds
+      case '04d':
+      case '04n':
+        return Icons.cloud_rounded; // Heavy broken/overcast clouds
+
+      // Shower Rain / Drizzle (This replaces the confusing dot-grid!)
+      case '09d':
+      case '09n':
+        return Icons.umbrella_rounded; // Or Icons.cloud_drizzle_rounded;
+
+      // Rain
+      case '10d':
+        return Icons.umbrella_rounded; // Rain icon
+      case '10n':
+        return Icons.umbrella_rounded;
+
+      // Thunderstorm
+      case '11d':
+      case '11n':
+        return Icons.thunderstorm_rounded; // Cloud with lightningbolt
+
+      // Snow
+      case '13d':
+      case '13n':
+        return Icons.ac_unit_rounded; // Actual snowflake
+
+      // Mist / Fog / Haze
+      case '50d':
+      case '50n':
+        return Icons.blur_on_rounded; // Foggy/misty horizontal profile
+
+      // Default Fallback
+      default:
+        return Icons.wb_cloudy_rounded;
+    }
   }
 
   @override
@@ -380,86 +421,149 @@ class _HomeScreenState extends State<HomeScreen> {
   // -------------------------------------------------------------------------
   // WEATHER SECTION
   // -------------------------------------------------------------------------
-
-  // TODO(weather): Replace dummy `hourly` list with:
-  //   ref.watch(weatherProvider).hourlyForecast
-  //   Model: lib/models/weather.dart → HourlyWeather { time, tempCelsius, condition }
-  //   API: OpenWeatherMap One Call 3.0 → /onecall?lat=&lon=&exclude=minutely,alerts
-  //   Map condition codes → Icons: see lib/utils/weather_icon_mapper.dart (to create)
-  // TODO(weather): 'isActive' should be the hour closest to DateTime.now(), not hardcoded index 1
-  //   Logic: hourly.indexWhere((h) => h.time is nearest to current hour)
-  // TODO(l10n): 'Today' / 'Tomorrow' labels should use AppLocalizations or Bengali strings
-  // TODO(weather): 'Tomorrow' tab should be tappable — toggle between today/tomorrow hourly slices
-  //   State: add `bool _showTomorrow = false;` or a small Riverpod StateProvider
   // TODO(weather): Pull user's lat/lng for weather query from:
   //   ref.watch(locationProvider) — request permission on first launch
   Widget _buildWeatherSection(BuildContext context) {
-    final hourly = [
-      _HourlyWeather('12:00', '26', Icons.wb_cloudy_outlined),
-      _HourlyWeather('02:00', '28', Icons.wb_cloudy,
-          isActive: true), // Active card highlighted in green
-      _HourlyWeather('04:00', '23', Icons.thunderstorm_outlined),
-      _HourlyWeather('06:00', '26', Icons.wb_sunny_outlined),
-      _HourlyWeather('08:00', '27', Icons.wb_cloudy_outlined),
-    ];
+    // Watches the data engine updates
+    final weatherAsync = ref.watch(weatherProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Row(
-            children: [
-              const Text('Today',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(width: 20),
-              Text('Tomorrow',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 16)),
-              const Spacer(),
-              TextButton(
-                onPressed: () =>
-                    Navigator.pushNamed(context, AppRouter.weather),
-                child: const Row(
-                  children: [
-                    Text('Next 7 Days',
-                        // ── CHANGED: was Colors.blue → AppTheme.primaryGreen ──
-                        style: TextStyle(
-                            color: AppTheme.primaryGreen, fontSize: 12)),
-                    Icon(Icons.chevron_right,
-                        size: 16,
-                        // ── CHANGED: was Colors.blue → AppTheme.primaryGreen ──
-                        color: AppTheme.primaryGreen),
-                  ],
-                ),
-              )
-            ],
+    return weatherAsync.when(
+      // Smooth loading indicator matching standard container block constraints
+      loading: () => const SizedBox(
+        height: 160,
+        child: Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+      ),
+      // Displays an error interface row with a retry call action if network connection drops
+      error: (err, stack) => SizedBox(
+        height: 160,
+        child: Center(
+          child: TextButton.icon(
+            onPressed: () => ref.read(weatherProvider.notifier).refresh(),
+            icon: const Icon(Icons.refresh, color: AppTheme.primaryGreen),
+            label: const Text('আবহাওয়া লোড করা যায়নি। পুনরায় চেষ্টা করুন',
+                style: TextStyle(color: AppTheme.primaryGreen)),
           ),
         ),
-        SizedBox(
-          height: 110,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: hourly.length,
-            itemBuilder: (context, index) => _buildWeatherCard(hourly[index]),
-          ),
-        ),
-        const SizedBox(height: 20), // Spacing before search bar
-      ],
+      ),
+      // Active interface layer rendering engine processing data arrays
+      data: (weatherData) {
+        final now = DateTime.now();
+        final todayTarget = DateTime(now.year, now.month, now.day);
+        final tomorrowTarget = todayTarget.add(const Duration(days: 1));
+
+        // Filters out intervals to isolate data points matching today's date
+        final todayHourly = weatherData.hourly.where((h) {
+          final hDate = DateTime(h.time.year, h.time.month, h.time.day);
+          return hDate.isAtSameMomentAs(todayTarget);
+        }).toList();
+
+        // Filters out intervals to isolate data points matching tomorrow's date
+        final tomorrowHourly = weatherData.hourly.where((h) {
+          final hDate = DateTime(h.time.year, h.time.month, h.time.day);
+          return hDate.isAtSameMomentAs(tomorrowTarget);
+        }).toList();
+
+        // Determines which list array needs to be mapped based on user interactive toggle selections
+        final visibleHourly = _showTomorrow
+            ? (tomorrowHourly.isNotEmpty
+                ? tomorrowHourly
+                : weatherData.next9Hours)
+            : (todayHourly.isNotEmpty ? todayHourly : weatherData.next9Hours);
+
+        // Highlight tracker: finds the closest specific hour block matching the actual device clock right now
+        HourlyWeather? activeHourlyItem;
+        if (visibleHourly.isNotEmpty) {
+          activeHourlyItem = visibleHourly.reduce((a, b) {
+            final diffA = (a.time.difference(now)).abs();
+            final diffB = (b.time.difference(now)).abs();
+            return diffA < diffB ? a : b;
+          });
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row layer navigation controllers containing tab elements and a redirection chevron link button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => setState(() => _showTomorrow = false),
+                    child: Text(
+                      'আজ',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: !_showTomorrow ? Colors.black : Colors.grey[400],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  GestureDetector(
+                    onTap: () => setState(() => _showTomorrow = true),
+                    child: Text(
+                      'আগামীকাল',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: _showTomorrow ? Colors.black : Colors.grey[400],
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () =>
+                        Navigator.pushNamed(context, AppRouter.weather),
+                    child: const Row(
+                      children: [
+                        Text('পরবর্তী ৫ দিন',
+                            style: TextStyle(
+                                color: AppTheme.primaryGreen, fontSize: 12)),
+                        Icon(Icons.chevron_right,
+                            size: 16, color: AppTheme.primaryGreen),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ),
+            // Horizontal scrolling tracking horizontal list rendering individual cards
+            SizedBox(
+              height: 110,
+              child: visibleHourly.isEmpty
+                  ? const Center(
+                      child: Text('আবহাওয়ার কোনো তথ্য পাওয়া যায়নি'))
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: visibleHourly.length,
+                      itemBuilder: (context, index) {
+                        final item = visibleHourly[index];
+                        final isActive = item == activeHourlyItem;
+                        return _buildWeatherCard(item, isActive);
+                      },
+                    ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        );
+      },
     );
   }
 
-  // TODO(weather): Replace _HourlyWeather dummy model with real HourlyWeather from lib/models/weather.dart
-  // TODO(weather): tempCelsius should display as '${w.temp}°C' or toggle °F based on user prefs
-  Widget _buildWeatherCard(_HourlyWeather w) {
+  // TODO(weather): tempCelsius should display as '${w.tempCelsius}°C' or toggle °F based on user prefs
+  Widget _buildWeatherCard(HourlyWeather w, bool isActive) {
+    final rawTimeStr = DateFormat('h a').format(w.time);
+
     return Container(
-      width: 52,
+      width: 54, // Bumped slightly by 2px to give text room to breathe safely
       margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
-        // ── CHANGED: active card was Colors.blue → AppTheme.primaryGreen ──
-        color: w.isActive ? AppTheme.primaryGreen : Colors.white,
-        borderRadius: BorderRadius.circular(25), // Pill shape
+        color: isActive ? AppTheme.primaryGreen : Colors.white,
+        borderRadius: BorderRadius.circular(25),
         boxShadow: const [
           BoxShadow(
             color: Color(0xFFE0DEDE),
@@ -471,21 +575,41 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(w.time,
-              style: TextStyle(
-                  color: w.isActive ? Colors.white70 : Colors.grey,
-                  fontSize: 9)),
-          const SizedBox(height: 6),
-          Icon(w.icon,
-              // ── CHANGED: inactive icon was Colors.blueAccent → AppTheme.primaryGreen ──
-              color: w.isActive ? Colors.white : AppTheme.primaryGreen,
-              size: 18),
-          const SizedBox(height: 6),
-          Text('${w.temp}°',
-              style: TextStyle(
-                  color: w.isActive ? Colors.white : Colors.black87,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold)),
+          // Time String (E.g., ১২ পূর্বাহ্ন)
+          Text(
+            WeatherData.toBangla(rawTimeStr),
+            style: TextStyle(
+              color: isActive ? Colors.white70 : Colors.grey,
+              fontSize: 9,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Clear Weather Icon
+          Icon(
+            _iconFromCode(w.iconCode),
+            color: isActive ? Colors.white : AppTheme.primaryGreen,
+            size: 18,
+          ),
+          const SizedBox(height: 4),
+          // Temperature Number (E.g., ২৮°)
+          Text(
+            '${WeatherData.toBangla(w.tempCelsius.round())}°',
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.black87,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          // NEW SUMMARY LABEL: Single-word clarification note (E.g., বৃষ্টি)
+          Text(
+            WeatherData.getShortBanglaCondition(w.iconCode),
+            style: TextStyle(
+              color: isActive ? Colors.white70 : Colors.grey[600],
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
