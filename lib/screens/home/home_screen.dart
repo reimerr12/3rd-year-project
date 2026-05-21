@@ -492,23 +492,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   GestureDetector(
                     onTap: () => setState(() => _showTomorrow = false),
                     child: Text(
-                      'আজ',
+                      'আজকের আবহাওয়া',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: !_showTomorrow ? Colors.black : Colors.grey[400],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  GestureDetector(
-                    onTap: () => setState(() => _showTomorrow = true),
-                    child: Text(
-                      'আগামীকাল',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: _showTomorrow ? Colors.black : Colors.grey[400],
                       ),
                     ),
                   ),
