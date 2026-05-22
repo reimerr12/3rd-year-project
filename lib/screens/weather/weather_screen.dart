@@ -437,7 +437,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
   }
 }
 
-// --- RENDERING WEATHER EFFECTS CUSTOM CANVAS ENGINE ---
+// ---CANVAS ENGINE ---
 class WeatherEffectPainter extends CustomPainter {
   final String iconCode;
   final double animationValue;

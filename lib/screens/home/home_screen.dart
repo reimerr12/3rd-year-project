@@ -424,17 +424,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // TODO(weather): Pull user's lat/lng for weather query from:
   //   ref.watch(locationProvider) — request permission on first launch
   Widget _buildWeatherSection(BuildContext context) {
-    // Watches the data engine updates
     final weatherAsync = ref.watch(weatherProvider);
 
     return weatherAsync.when(
-      // Smooth loading indicator matching standard container block constraints
       loading: () => const SizedBox(
         height: 160,
         child: Center(
             child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
       ),
-      // Displays an error interface row with a retry call action if network connection drops
       error: (err, stack) => SizedBox(
         height: 160,
         child: Center(
@@ -446,32 +443,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
-      // Active interface layer rendering engine processing data arrays
       data: (weatherData) {
         final now = DateTime.now();
         final todayTarget = DateTime(now.year, now.month, now.day);
         final tomorrowTarget = todayTarget.add(const Duration(days: 1));
 
-        // Filters out intervals to isolate data points matching today's date
+        // 1. Isolate strict calendar date buckets for explicit day views
         final todayHourly = weatherData.hourly.where((h) {
           final hDate = DateTime(h.time.year, h.time.month, h.time.day);
           return hDate.isAtSameMomentAs(todayTarget);
         }).toList();
 
-        // Filters out intervals to isolate data points matching tomorrow's date
         final tomorrowHourly = weatherData.hourly.where((h) {
           final hDate = DateTime(h.time.year, h.time.month, h.time.day);
           return hDate.isAtSameMomentAs(tomorrowTarget);
         }).toList();
 
-        // Determines which list array needs to be mapped based on user interactive toggle selections
+        // 2. Determine visible array. If showing "Today" but evening has cleared out
+        // the list, gracefully transition to use the rolling 9-hour sequence so it never looks empty!
         final visibleHourly = _showTomorrow
             ? (tomorrowHourly.isNotEmpty
                 ? tomorrowHourly
                 : weatherData.next9Hours)
-            : (todayHourly.isNotEmpty ? todayHourly : weatherData.next9Hours);
+            : (todayHourly.length >= 5 ? todayHourly : weatherData.next9Hours);
 
-        // Highlight tracker: finds the closest specific hour block matching the actual device clock right now
+        // 3. Highlight tracker: finds closest specific point matching current clock
         HourlyWeather? activeHourlyItem;
         if (visibleHourly.isNotEmpty) {
           activeHourlyItem = visibleHourly.reduce((a, b) {
@@ -484,7 +480,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Row layer navigation controllers containing tab elements and a redirection chevron link button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Row(
@@ -517,15 +512,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
             ),
-            // Horizontal scrolling tracking horizontal list rendering individual cards
+
+            // Horizontal scrolling tracking strip
             SizedBox(
-              height: 110,
+              height:
+                  120, // Bypassed slightly by 10px to accommodate Bengali typography rendering cleanly
               child: visibleHourly.isEmpty
                   ? const Center(
                       child: Text('আবহাওয়ার কোনো তথ্য পাওয়া যায়নি'))
                   : ListView.builder(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
+                      physics: const BouncingScrollPhysics(),
                       itemCount: visibleHourly.length,
                       itemBuilder: (context, index) {
                         final item = visibleHourly[index];
@@ -534,7 +532,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
           ],
         );
       },
