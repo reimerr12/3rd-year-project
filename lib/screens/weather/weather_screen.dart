@@ -22,7 +22,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
     // Smooth ticker animation cycle to drive environmental canvas drawing updates
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 30),
     )..repeat();
   }
 
@@ -86,7 +86,10 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
           ),
         ),
         data: (data) {
-          final config = WeatherData.getThemeConfig(data.current.iconCode);
+          final config = WeatherData.getThemeConfig(
+            data.current.iconCode,
+            tempCelsius: data.current.tempCelsius,
+          );
           final iconCode = data.current.iconCode;
 
           return RefreshIndicator(
@@ -473,44 +476,69 @@ class WeatherEffectPainter extends CustomPainter {
   }
 
   void _paintStars(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white;
-    final random = math.Random(77);
+    // Pre-defined star positions — stable, no per-frame random regeneration
+    final stars = [
+      (x: 0.08, y: 0.05, size: 1.8),
+      (x: 0.23, y: 0.12, size: 1.2),
+      (x: 0.41, y: 0.07, size: 2.0),
+      (x: 0.67, y: 0.03, size: 1.4),
+      (x: 0.85, y: 0.10, size: 1.6),
+      (x: 0.15, y: 0.22, size: 1.0),
+      (x: 0.55, y: 0.18, size: 1.8),
+      (x: 0.75, y: 0.25, size: 1.2),
+      (x: 0.32, y: 0.30, size: 2.2),
+      (x: 0.91, y: 0.20, size: 1.4),
+      (x: 0.48, y: 0.35, size: 1.0),
+      (x: 0.62, y: 0.40, size: 1.6),
+      (x: 0.10, y: 0.45, size: 1.2),
+      (x: 0.78, y: 0.38, size: 2.0),
+      (x: 0.25, y: 0.50, size: 1.4),
+      (x: 0.50, y: 0.55, size: 1.8),
+      (x: 0.88, y: 0.48, size: 1.0),
+      (x: 0.38, y: 0.60, size: 1.6),
+      (x: 0.70, y: 0.58, size: 1.2),
+      (x: 0.05, y: 0.65, size: 2.0),
+    ];
 
-    for (int i = 0; i < 40; i++) {
-      double x = random.nextDouble() * size.width;
-      double y = random.nextDouble() * (size.height * 0.8);
+    final paint = Paint();
 
-      double twinkleOffset = random.nextDouble();
-      double opacity = 0.15 +
-          0.85 *
-              (math.sin((animationValue * math.pi * 2) + (twinkleOffset * 12)) +
-                  1) /
-              2;
-
+    for (int i = 0; i < stars.length; i++) {
+      final star = stars[i];
+      // Each star twinkles at a slightly different phase
+      final phase = (i / stars.length) * math.pi * 2;
+      final opacity =
+          0.2 + 0.8 * (math.sin(animationValue * math.pi * 2 + phase) + 1) / 2;
       paint.color = Colors.white.withAlpha((opacity * 255).toInt());
-      double starSize = random.nextDouble() * 1.8 + 0.6;
-      canvas.drawCircle(Offset(x, y), starSize, paint);
+      canvas.drawCircle(
+        Offset(star.x * size.width, star.y * size.height),
+        star.size,
+        paint,
+      );
     }
   }
 
   void _paintDriftingClouds(Canvas canvas, Size size, Color cloudColor) {
+    final clouds = [
+      (baseX: 0.10, baseY: 0.12, radius: 52.0),
+      (baseX: 0.50, baseY: 0.22, radius: 44.0),
+      (baseX: 0.78, baseY: 0.08, radius: 38.0),
+      (baseX: 0.30, baseY: 0.28, radius: 32.0),
+    ];
+
     final paint = Paint()..color = cloudColor;
-    final random = math.Random(404);
 
-    for (int i = 0; i < 3; i++) {
-      double cloudVelocity = (i + 1) * 12.0;
-      double x = (random.nextDouble() * size.width +
-                  (animationValue * cloudVelocity)) %
-              (size.width + 160) -
-          80;
-      double y = 30.0 + (random.nextDouble() * 70.0);
-      double baseRadius = 40.0 + (random.nextDouble() * 20.0);
+    for (final cloud in clouds) {
+      // animationValue goes 0→1 over 3s, so * (3/12) = one full drift every 12s
+      final x = (cloud.baseX * size.width + animationValue * size.width * 0.5) %
+              (size.width + cloud.radius * 2) -
+          cloud.radius;
+      final y = cloud.baseY * size.height;
+      final r = cloud.radius;
 
-      canvas.drawCircle(Offset(x, y), baseRadius, paint);
-      canvas.drawCircle(Offset(x + (baseRadius * 0.6), y - (baseRadius * 0.15)),
-          baseRadius * 0.75, paint);
-      canvas.drawCircle(Offset(x - (baseRadius * 0.5), y + (baseRadius * 0.1)),
-          baseRadius * 0.65, paint);
+      canvas.drawCircle(Offset(x, y), r, paint);
+      canvas.drawCircle(Offset(x + r * 0.65, y - r * 0.18), r * 0.72, paint);
+      canvas.drawCircle(Offset(x - r * 0.55, y + r * 0.12), r * 0.62, paint);
+      canvas.drawCircle(Offset(x + r * 0.25, y - r * 0.30), r * 0.50, paint);
     }
   }
 

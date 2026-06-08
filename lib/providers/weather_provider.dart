@@ -10,7 +10,7 @@ final weatherProvider =
 class WeatherNotifier extends AsyncNotifier<WeatherData> {
   // Direct injection interface linking to our new weather service component
   final WeatherService _service = WeatherService();
-
+  Map<String, dynamic>? rawForecast;
   @override
   Future<WeatherData> build() async {
     return _fetchPipeline();
@@ -31,13 +31,13 @@ class WeatherNotifier extends AsyncNotifier<WeatherData> {
         await _service.fetchCurrentWeather(pos.latitude, pos.longitude);
     final forecastRaw =
         await _service.fetchForecast(pos.latitude, pos.longitude);
+    rawForecast = forecastRaw;
 
     final current =
         CurrentWeather.fromJson(currentRaw, pos.latitude, pos.longitude);
     final rawHours = (forecastRaw['list'] as List)
         .map((h) => HourlyWeather.fromJson(h))
         .toList();
-
     return WeatherData(
       current: current,
       hourly: rawHours,

@@ -36,7 +36,6 @@ class CurrentWeather {
     required this.lon,
   });
 
-  /// Instantiates a new safe snapshot map instance with deep string sanitization fallbacks.
   factory CurrentWeather.fromJson(
       Map<String, dynamic> json, double lat, double lon) {
     final weatherOpt = (json['weather'] as List?)?.first;
@@ -173,7 +172,11 @@ class WeatherData {
   List<HourlyWeather> get next9Hours => hourly.take(9).toList();
 
   /// Evaluates icon parameters to provide dynamic interface style attributes.
-  static WeatherThemeConfig getThemeConfig(String iconCode) {
+  static WeatherThemeConfig getThemeConfig(String iconCode,
+      {double tempCelsius = 0}) {
+    // Hot + broken clouds (04d) → treat as warm hazy day visually
+    if (iconCode == '04d' && tempCelsius > 32) iconCode = '02d';
+
     final isNight = iconCode.endsWith('n');
     final coreCode = iconCode.length >= 2 ? iconCode.substring(0, 2) : '01';
 
@@ -181,23 +184,15 @@ class WeatherData {
     if (isNight) {
       if (coreCode == '09' || coreCode == '10' || coreCode == '11') {
         return WeatherThemeConfig(
-          gradient: [
-            const Color(0xFF101F32),
-            const Color(0xFF1B2A47)
-          ], // Rainy Night Sky
-          cardBackground: const Color(
-              0x1FFFFFFF), // White with ~12% alpha (hex transparency code 1F)
+          gradient: [const Color(0xFF101F32), const Color(0xFF1B2A47)],
+          cardBackground: const Color(0x1FFFFFFF),
           textColor: Colors.white,
           statusText: 'বৃষ্টি হচ্ছে • আজ রাতেও সম্ভাবনা আছে',
         );
       }
       return WeatherThemeConfig(
-        gradient: [
-          const Color(0xFF0F172A),
-          const Color(0xFF1E293B)
-        ], // Clear/Normal Night Sky
-        cardBackground: const Color(
-            0x14FFFFFF), // White with ~8% alpha (hex transparency code 14)
+        gradient: [const Color(0xFF0F172A), const Color(0xFF1E293B)],
+        cardBackground: const Color(0x14FFFFFF),
         textColor: Colors.white,
         statusText: 'পরিষ্কার রাত • শান্ত আবহাওয়া',
       );
@@ -205,58 +200,50 @@ class WeatherData {
 
     // 2. Daytime Scene Transitions
     switch (coreCode) {
-      case '01': // Sunny / Clear Sky
+      case '01':
         return WeatherThemeConfig(
-          gradient: [
-            const Color(0xFF3B82F6),
-            const Color(0xFF60A5FA)
-          ], // Soft Sky Blue
-          cardBackground: const Color(
-              0x33FFFFFF), // White with 20% alpha (hex transparency code 33)
+          gradient: [const Color(0xFF3B82F6), const Color(0xFF60A5FA)],
+          cardBackground: const Color(0x33FFFFFF),
           textColor: Colors.white,
           statusText: 'রৌদ্রোজ্জ্বল • আকাশ পরিষ্কার',
         );
       case '02':
-      case '03':
-      case '04': // Scattered / Broken / Dense Clouds
         return WeatherThemeConfig(
           gradient: [
-            const Color(0xFF64748B),
-            const Color(0xFF475569)
-          ], // Cool Overcast Slate
-          cardBackground: const Color(
-              0x26FFFFFF), // White with 15% alpha (hex transparency code 26)
+            const Color(0xFF3B82F6),
+            const Color(0xFF60A5FA),
+          ],
+          cardBackground: const Color(0x33FFFFFF),
+          textColor: Colors.white,
+          statusText: 'আংশিক মেঘলা • রোদেলা আবহাওয়া',
+        );
+      case '03':
+      case '04':
+        return WeatherThemeConfig(
+          gradient: [const Color(0xFF64748B), const Color(0xFF475569)],
+          cardBackground: const Color(0x26FFFFFF),
           textColor: Colors.white,
           statusText: 'আংশিক মেঘলা • আকাশ মেঘাচ্ছন্ন',
         );
       case '09':
-      case '10': // Rain / Showers
+      case '10':
         return WeatherThemeConfig(
-          gradient: [
-            const Color(0xFF4A6B82),
-            const Color(0xFF385265)
-          ], // Deep Ocean/Rainy Grey-Blue
-          cardBackground: const Color(
-              0x26FFFFFF), // White with 15% alpha (hex transparency code 26)
+          gradient: [const Color(0xFF4A6B82), const Color(0xFF385265)],
+          cardBackground: const Color(0x26FFFFFF),
           textColor: Colors.white,
           statusText: 'আংশিক মেঘলা • আজ বৃষ্টি হতে পারে',
         );
-      case '11': // Thunderstorm
+      case '11':
         return WeatherThemeConfig(
-          gradient: [
-            const Color(0xFF1E1E2F),
-            const Color(0xFF12121F)
-          ], // Stormy Dark Plum
-          cardBackground: const Color(
-              0x1FFFFFFF), // White with ~12% alpha (hex transparency code 1F)
+          gradient: [const Color(0xFF1E1E2F), const Color(0xFF12121F)],
+          cardBackground: const Color(0x1FFFFFFF),
           textColor: Colors.white,
           statusText: 'বজ্রঝড় • সাবধানে থাকুন',
         );
       default:
         return WeatherThemeConfig(
           gradient: [const Color(0xFF3B82F6), const Color(0xFF60A5FA)],
-          cardBackground: const Color(
-              0x33FFFFFF), // White with 20% alpha (hex transparency code 33)
+          cardBackground: const Color(0x33FFFFFF),
           textColor: Colors.white,
           statusText: 'আংশিক মেঘলা',
         );
@@ -302,7 +289,7 @@ class WeatherData {
     return output;
   }
 
-  /// Maps an raw OpenWeather icon code snippet to a highly visible short single-word label.
+  /// Maps a raw OpenWeather icon code snippet to a highly visible short single-word label.
   static String getShortBanglaCondition(String iconCode) {
     if (iconCode.length < 2) return 'মেঘ';
     final coreCode = iconCode.substring(0, 2);
@@ -325,6 +312,17 @@ class WeatherData {
       default:
         return 'মেঘ';
     }
+  }
+
+  static String getShortEnglishCondition(String iconCode) {
+    if (iconCode.startsWith('01')) return 'Clear';
+    if (iconCode.startsWith('02') || iconCode.startsWith('03')) return 'Partly';
+    if (iconCode.startsWith('04')) return 'Cloudy';
+    if (iconCode.startsWith('09') || iconCode.startsWith('10')) return 'Rain';
+    if (iconCode.startsWith('11')) return 'Storm';
+    if (iconCode.startsWith('13')) return 'Snow';
+    if (iconCode.startsWith('50')) return 'Fog';
+    return 'Cloud';
   }
 
   /// Explicit fallback dictionary matching detailed text payloads from the server interface.

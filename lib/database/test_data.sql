@@ -623,8 +623,6 @@ INSERT INTO equipment (owner_id, name, description, type, images, rate_per_day, 
 ENDSQL
 echo "Done"
 Output
-Done
-
 
 Done
 
