@@ -366,3 +366,6 @@ CREATE TABLE weather_alerts (
 
 CREATE INDEX idx_weather_alerts_division  ON weather_alerts(division);
 CREATE INDEX idx_weather_alerts_issued_at ON weather_alerts(issued_at);
+
+ALTER TABLE orders ADD COLUMN transaction_id TEXT;
+ALTER TABLE bookings ADD COLUMN transaction_id TEXT;

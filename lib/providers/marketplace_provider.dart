@@ -328,6 +328,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
   Future<List<OrderEntry>> placeOrders({
     required String paymentMethod,
     required String deliveryAddress,
+    String? transactionId,
   }) async {
     final cart = state.cart;
     if (cart.isEmpty) throw Exception('Cart is empty');
@@ -342,6 +343,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
         total: item.product.price * item.quantity,
         paymentMethod: paymentMethod,
         deliveryAddress: deliveryAddress,
+        transactionId: transactionId,
       );
 
       placed.add(OrderEntry(

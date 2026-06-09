@@ -15,6 +15,8 @@ import '../../core/theme.dart';
 import '../../models/rental.dart';
 import '../../providers/rental_provider.dart';
 import '../../services/supabase_service.dart';
+import '../../services/payment_service.dart';
+import '../payment/bkash_webview_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Bilingual helper
@@ -70,12 +72,12 @@ const _kDivisionCoords = {
 
 class BookingScreen extends ConsumerStatefulWidget {
   final EquipmentModel equipment;
-  final bool bn; // language preference passed from parent
+  final bool bn;
 
   const BookingScreen({
     super.key,
     required this.equipment,
-    this.bn = true, // default to Bangla so existing callers still compile
+    this.bn = true,
   });
 
   @override
@@ -205,8 +207,92 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Main confirm handler — routes to bKash or direct based on payment method
+  // -------------------------------------------------------------------------
+
   Future<void> _confirmBooking() async {
     if (!_canBook) return;
+
+    if (_paymentMethod == 'bkash') {
+      await _confirmWithBkash();
+    } else {
+      await _confirmDirect();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // bKash flow: initiate → WebView → execute → placeBooking with trxId
+  // -------------------------------------------------------------------------
+
+  Future<void> _confirmWithBkash() async {
+    setState(() => _isLoading = true);
+
+    // Capture nav/messenger before any await gap
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      // Step 1: Grant token + create payment
+      final invoiceNo = BkashPaymentService.generateInvoiceNumber('RNT');
+      final paymentResult = await BkashPaymentService().initiate(
+        amount: _totalCost,
+        invoiceNumber: invoiceNo,
+      );
+
+      setState(() => _isLoading = false);
+
+      // Step 2: Open bKash WebView — returns trxId or null
+      final trxId = await nav.push<String>(
+        MaterialPageRoute(
+          builder: (_) => BkashWebViewScreen(
+            bkashUrl: paymentResult.bkashUrl,
+            paymentId: paymentResult.paymentId,
+            bn: bn,
+          ),
+        ),
+      );
+
+      // User cancelled or payment failed
+      if (trxId == null) return;
+
+      // Step 3: Place booking in Supabase with trxId
+      setState(() => _isLoading = true);
+
+      // ignore: unused_local_variable
+      final booking = await SupabaseService.instance.placeBooking(
+        equipmentId: eq.id,
+        ratePerDay: eq.ratePerDay,
+        startDate: _startDate!,
+        endDate: _endDate!,
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+        paymentMethod: 'bkash',
+        transactionId: trxId,
+      );
+
+      ref.invalidate(myBookingsProvider);
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showSuccessDialog(trxId: trxId);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      messenger.showSnackBar(SnackBar(
+        content:
+            Text('${_t(bn, "পেমেন্ট ব্যর্থ হয়েছে", "Payment failed")}: $e'),
+        backgroundColor: AppTheme.errorRed,
+      ));
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Cash
+  // -------------------------------------------------------------------------
+
+  Future<void> _confirmDirect() async {
     setState(() => _isLoading = true);
     try {
       await SupabaseService.instance.placeBooking(
@@ -233,7 +319,14 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     }
   }
 
-  void _showSuccessDialog() {
+  // -------------------------------------------------------------------------
+  // Success dialog — shows trxId if bKash was used
+  // -------------------------------------------------------------------------
+
+  void _showSuccessDialog({String? trxId}) {
+    // Capture nav before async context
+    final nav = Navigator.of(context);
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -246,20 +339,66 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             Text(_t(bn, 'বুকিং সফল!', 'Booking Confirmed!')),
           ],
         ),
-        content: Text(
-          bn
-              ? '${eq.name} সফলভাবে বুক করা হয়েছে।\n'
-                  '${_dateFmt.format(_startDate!)} — ${_dateFmt.format(_endDate!)}\n'
-                  'মোট: ${_currencyFmt.format(_totalCost)}'
-              : '${eq.name} has been booked successfully.\n'
-                  '${_dateFmt.format(_startDate!)} — ${_dateFmt.format(_endDate!)}\n'
-                  'Total: ${_currencyFmt.format(_totalCost)}',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              bn
+                  ? '${eq.name} সফলভাবে বুক করা হয়েছে।\n'
+                      '${_dateFmt.format(_startDate!)} — ${_dateFmt.format(_endDate!)}\n'
+                      'মোট: ${_currencyFmt.format(_totalCost)}'
+                  : '${eq.name} has been booked successfully.\n'
+                      '${_dateFmt.format(_startDate!)} — ${_dateFmt.format(_endDate!)}\n'
+                      'Total: ${_currencyFmt.format(_totalCost)}',
+            ),
+            // Show bKash transaction ID if available
+            if (trxId != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2136E).withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: const Color(0xFFE2136E).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Text('💳', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _t(bn, 'বিকাশ ট্র্যানজেকশন আইডি',
+                                'bKash Transaction ID'),
+                            style: const TextStyle(
+                                fontSize: 11, color: Color(0xFFE2136E)),
+                          ),
+                          Text(
+                            trxId,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFE2136E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
+              nav.pop(); // close dialog
+              nav.pop(); // go back to rentals
             },
             child: Text(
               _t(bn, 'ঠিক আছে', 'OK'),
@@ -431,10 +570,14 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               child: ElevatedButton(
                 onPressed: (_canBook && !_isLoading) ? _confirmBooking : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryGreen,
+                  backgroundColor: _paymentMethod == 'bkash'
+                      ? const Color(0xFFE2136E)
+                      : AppTheme.primaryGreen,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor:
-                      AppTheme.primaryGreen.withValues(alpha: 0.4),
+                  disabledBackgroundColor: (_paymentMethod == 'bkash'
+                          ? const Color(0xFFE2136E)
+                          : AppTheme.primaryGreen)
+                      .withValues(alpha: 0.4),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
@@ -448,7 +591,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       )
                     : Text(
                         _canBook
-                            ? '${_t(bn, "বুকিং নিশ্চিত করুন", "Confirm Booking")} — ${_currencyFmt.format(_totalCost)}'
+                            ? (_paymentMethod == 'bkash'
+                                ? '${_t(bn, "বিকাশে পেমেন্ট করুন", "Pay with bKash")} — ${_currencyFmt.format(_totalCost)}'
+                                : '${_t(bn, "বুকিং নিশ্চিত করুন", "Confirm Booking")} — ${_currencyFmt.format(_totalCost)}')
                             : _t(bn, 'তারিখ নির্বাচন করুন', 'Select Dates'),
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w700),
@@ -464,7 +609,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 }
 
 // ===========================================================================
-// EQUIPMENT MAP SHEET (self-contained, same as rentals_screen)
+// EQUIPMENT MAP SHEET
 // ===========================================================================
 
 class _EquipmentMapSheet extends StatefulWidget {
@@ -527,7 +672,6 @@ class _EquipmentMapSheetState extends State<_EquipmentMapSheet> {
       ),
       child: Column(
         children: [
-          // Drag handle
           Container(
             width: 40,
             height: 4,
@@ -537,8 +681,6 @@ class _EquipmentMapSheetState extends State<_EquipmentMapSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-
-          // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Row(
@@ -582,8 +724,6 @@ class _EquipmentMapSheetState extends State<_EquipmentMapSheet> {
               ],
             ),
           ),
-
-          // Approximate warning
           if (_approximate && !_loading)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -610,8 +750,6 @@ class _EquipmentMapSheetState extends State<_EquipmentMapSheet> {
                 ],
               ),
             ),
-
-          // Map
           Expanded(
             child: _loading
                 ? Center(
@@ -671,7 +809,7 @@ class _EquipmentMapSheetState extends State<_EquipmentMapSheet> {
 }
 
 // ===========================================================================
-// SUB-WIDGETS
+// SUB-WIDGETS (unchanged from original)
 // ===========================================================================
 
 class _SectionHeader extends StatelessWidget {
@@ -691,14 +829,10 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Equipment summary card — now has an optional "View on Map" button
-// ---------------------------------------------------------------------------
-
 class _EquipmentSummaryCard extends StatelessWidget {
   final EquipmentModel equipment;
   final bool bn;
-  final VoidCallback? onViewMap; // null = no location available, hide button
+  final VoidCallback? onViewMap;
 
   const _EquipmentSummaryCard({
     required this.equipment,
@@ -747,7 +881,6 @@ class _EquipmentSummaryCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon
               Container(
                 width: 64,
                 height: 64,
@@ -762,7 +895,6 @@ class _EquipmentSummaryCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              // Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -811,7 +943,6 @@ class _EquipmentSummaryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Rate
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -832,8 +963,6 @@ class _EquipmentSummaryCard extends StatelessWidget {
               ),
             ],
           ),
-
-          // View on Map button — only shown when location data exists
           if (onViewMap != null) ...[
             const SizedBox(height: 12),
             const Divider(height: 1),
@@ -873,10 +1002,6 @@ class _EquipmentSummaryCard extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Booked dates list
-// ---------------------------------------------------------------------------
 
 class _BookedDatesList extends StatelessWidget {
   final List<BookingModel> bookings;
@@ -921,7 +1046,6 @@ class _BookedDatesList extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Warning banner
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
@@ -944,7 +1068,6 @@ class _BookedDatesList extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          // Booking rows
           ...bookings.map((b) {
             final color = _statusColor(b.status);
             return Padding(
@@ -990,10 +1113,6 @@ class _BookedDatesList extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Date picker tile
-// ---------------------------------------------------------------------------
 
 class _DatePickerTile extends StatelessWidget {
   final String label;
@@ -1064,10 +1183,6 @@ class _DatePickerTile extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Cost summary card
-// ---------------------------------------------------------------------------
 
 class _CostSummaryCard extends StatelessWidget {
   final double ratePerDay;
@@ -1161,10 +1276,6 @@ class _CostRow extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Payment method selector
-// ---------------------------------------------------------------------------
-
 class _PaymentMethodSelector extends StatelessWidget {
   final String? selected;
   final bool bn;
@@ -1179,19 +1290,21 @@ class _PaymentMethodSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final methods = [
-      {'value': 'bkash', 'label': 'bKash', 'labelBn': 'bKash', 'icon': '💳'},
+      {'value': 'bkash', 'label': 'bKash', 'labelBn': 'বিকাশ', 'icon': '💳'},
       {
-        'value': 'sslcommerz',
-        'label': 'SSLCommerz',
-        'labelBn': 'SSLCommerz',
-        'icon': '🏦'
+        'value': 'cash',
+        'label': 'Cash on Delivery',
+        'labelBn': 'নগদ অর্থ',
+        'icon': '💵'
       },
-      {'value': 'cash', 'label': 'Cash', 'labelBn': 'নগদ অর্থ', 'icon': '💵'},
     ];
 
     return Column(
       children: methods.map((m) {
         final isSelected = selected == m['value'];
+        final isBkash = m['value'] == 'bkash';
+        final activeColor =
+            isBkash ? const Color(0xFFE2136E) : AppTheme.primaryGreen;
         return GestureDetector(
           onTap: () => onChanged(m['value'] as String),
           child: Container(
@@ -1199,11 +1312,11 @@ class _PaymentMethodSelector extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppTheme.primaryGreen.withValues(alpha: 0.08)
+                  ? activeColor.withValues(alpha: 0.08)
                   : Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected ? AppTheme.primaryGreen : AppTheme.borderGrey,
+                color: isSelected ? activeColor : AppTheme.borderGrey,
                 width: isSelected ? 1.5 : 1,
               ),
             ),
@@ -1211,20 +1324,32 @@ class _PaymentMethodSelector extends StatelessWidget {
               children: [
                 Text(m['icon']!, style: const TextStyle(fontSize: 20)),
                 const SizedBox(width: 12),
-                Text(
-                  bn ? m['labelBn']! : m['label']!,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.normal,
-                    color:
-                        isSelected ? AppTheme.darkGreen : AppTheme.textPrimary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        bn ? m['labelBn']! : m['label']!,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.normal,
+                          color:
+                              isSelected ? activeColor : AppTheme.textPrimary,
+                        ),
+                      ),
+                      if (isBkash)
+                        Text(
+                          _t(bn, 'বিকাশ পেমেন্ট গেটওয়ে',
+                              'Secure bKash payment'),
+                          style: const TextStyle(
+                              fontSize: 11, color: AppTheme.textSecondary),
+                        ),
+                    ],
                   ),
                 ),
-                const Spacer(),
                 if (isSelected)
-                  const Icon(Icons.check_circle,
-                      color: AppTheme.primaryGreen, size: 20),
+                  Icon(Icons.check_circle, color: activeColor, size: 20),
               ],
             ),
           ),

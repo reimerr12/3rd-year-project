@@ -645,6 +645,7 @@ class SupabaseService {
     String? notes,
     String? paymentMethod,
     String? deliveryAddress,
+    String? transactionId, // ADD THIS
   }) async {
     final data = await _client
         .from('orders')
@@ -658,6 +659,9 @@ class SupabaseService {
           'notes': notes,
           'payment_method': paymentMethod,
           'delivery_address': deliveryAddress,
+          'transaction_id': transactionId, // ADD THIS
+          if (transactionId != null)
+            'paid_at': DateTime.now().toIso8601String(), // ADD THIS
         })
         .select()
         .single();
@@ -895,6 +899,7 @@ class SupabaseService {
     required DateTime endDate,
     String? notes,
     String? paymentMethod,
+    String? transactionId,
   }) async {
     final days = endDate.difference(startDate).inDays + 1;
     if (days < 1) throw Exception('endDate must be on or after startDate');
@@ -913,10 +918,11 @@ class SupabaseService {
           'start_date': fmt(startDate),
           'end_date': fmt(endDate),
           'status': 'pending',
-          'payment_status': 'pending',
+          'payment_status': transactionId != null ? 'paid' : 'pending',
           'payment_method': paymentMethod,
           'total_cost': totalCost,
           'notes': notes,
+          'transaction_id': transactionId,
         })
         .select()
         .single();

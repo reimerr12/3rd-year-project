@@ -38,6 +38,9 @@ dependencies:
   # Charts
   fl_chart: ^0.68.0
 
+  # pubspec.yaml
+  webview_flutter: ^4.7.0
+
   # UI utilities
   intl: ^0.20.0
   cached_network_image: ^3.3.1

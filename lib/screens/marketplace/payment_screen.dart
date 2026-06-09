@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/marketplace_provider.dart';
+import '../../services/payment_service.dart';
+import '../payment/bkash_webview_screen.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
@@ -47,6 +49,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     super.dispose();
   }
 
+  // -------------------------------------------------------------------------
+  // Main handler — routes to bKash or direct
+  // -------------------------------------------------------------------------
+
   Future<void> _confirmOrder() async {
     if (_addressController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -59,7 +65,94 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       return;
     }
 
+    if (_selectedPayment == 'bkash') {
+      await _confirmWithBkash();
+    } else {
+      await _confirmDirect();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // bKash: initiate → WebView → execute → placeOrders with trxId
+  // -------------------------------------------------------------------------
+
+  Future<void> _confirmWithBkash() async {
+    final cart = ref.read(marketplaceProvider).cart;
+    if (cart.isEmpty) return;
+
+    final total =
+        cart.fold<double>(0, (sum, e) => sum + e.product.price * e.quantity) +
+            60.0; // delivery fee
+
     setState(() => _isPlacing = true);
+
+    // Capture nav/messenger before any await gap
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      // Step 1: Grant token + create payment
+      final invoiceNo = BkashPaymentService.generateInvoiceNumber('MKT');
+      final paymentResult = await BkashPaymentService().initiate(
+        amount: total,
+        invoiceNumber: invoiceNo,
+      );
+
+      setState(() => _isPlacing = false);
+
+      // Step 2: Open bKash WebView — returns trxId or null on cancel/failure
+      final trxId = await nav.push<String>(
+        MaterialPageRoute(
+          builder: (_) => BkashWebViewScreen(
+            bkashUrl: paymentResult.bkashUrl,
+            paymentId: paymentResult.paymentId,
+            bn: true, // payment screen is currently BN-only
+          ),
+        ),
+      );
+
+      if (trxId == null) return; // user cancelled or payment failed
+
+      // Step 3: Place orders in Supabase with trxId
+      setState(() => _isPlacing = true);
+
+      final placedOrders =
+          await ref.read(marketplaceProvider.notifier).placeOrders(
+                paymentMethod: 'bkash',
+                deliveryAddress: _addressController.text.trim(),
+                transactionId: trxId,
+              );
+
+      if (!mounted) return;
+      setState(() => _isPlacing = false);
+
+      nav.pushReplacementNamed(
+        AppRouter.orderConfirmation,
+        arguments: placedOrders,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isPlacing = false);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('পেমেন্ট ব্যর্থ হয়েছে: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Cash / SSLCommerz — direct, no gateway
+  // -------------------------------------------------------------------------
+
+  Future<void> _confirmDirect() async {
+    setState(() => _isPlacing = true);
+
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     try {
       final placedOrders =
           await ref.read(marketplaceProvider.notifier).placeOrders(
@@ -67,22 +160,22 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 deliveryAddress: _addressController.text.trim(),
               );
       if (!mounted) return;
-      Navigator.pushReplacementNamed(
-        context,
+      setState(() => _isPlacing = false);
+
+      nav.pushReplacementNamed(
         AppRouter.orderConfirmation,
         arguments: placedOrders,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      setState(() => _isPlacing = false);
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('অর্ডার দেওয়া যায়নি। আবার চেষ্টা করুন।'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isPlacing = false);
     }
   }
 
@@ -94,6 +187,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         cart.fold<double>(0, (sum, e) => sum + e.product.price * e.quantity);
     const deliveryFee = 60.0;
     final total = subtotal + deliveryFee;
+
+    // Button color matches selected payment method
+    final selectedOption =
+        _paymentOptions.firstWhere((o) => o.id == _selectedPayment);
+    final buttonColor = selectedOption.color;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F5),
@@ -288,13 +386,40 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               }).toList(),
             ),
           ),
+
+          // Sandbox hint — only shown when bKash selected
+          if (_selectedPayment == 'bkash') ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 15, color: Colors.amber),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'স্যান্ডবক্স: ওয়ালেট 01770618575 · PIN 12121 · OTP 123456',
+                      style: TextStyle(fontSize: 11, color: Colors.amber),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 28),
           SizedBox(
             height: 54,
             child: ElevatedButton(
               onPressed: _isPlacing ? null : _confirmOrder,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryGreen,
+                // Button color matches selected payment method
+                backgroundColor: buttonColor,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.grey.shade300,
                 shape: RoundedRectangleBorder(
@@ -316,9 +441,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                                 fontSize: 16, fontWeight: FontWeight.bold)),
                       ],
                     )
-                  : Text('৳${total.toStringAsFixed(0)} পরিশোধ করুন',
+                  : Text(
+                      _selectedPayment == 'bkash'
+                          ? 'বিকাশে পেমেন্ট করুন — ৳${total.toStringAsFixed(0)}'
+                          : '৳${total.toStringAsFixed(0)} পরিশোধ করুন',
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
             ),
           ),
           const SizedBox(height: 32),
