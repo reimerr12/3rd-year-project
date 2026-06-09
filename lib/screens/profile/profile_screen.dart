@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/marketplace_provider.dart';
 import '../../models/product.dart';
+import '../../services/supabase_service.dart';
 
 // ── Profile Screen ─────────────────────────────────────────────
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -25,7 +26,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.initState();
     Future.microtask(() async {
       final notifier = ref.read(marketplaceProvider.notifier);
-      // Load orders and listings fresh from Supabase
       await notifier.loadOrders();
       final listings = await notifier.fetchMyListings();
       if (mounted) {
@@ -54,7 +54,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ── Real auth data ────────────────────────────────────────
     final user = ref.watch(currentUserProvider);
     final name = user?.name ?? 'কৃষক';
     final phone = user?.phone ?? '';
@@ -63,15 +62,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final role = user?.role ?? 'farmer';
     final avatarUrl = user?.avatarUrl ?? '';
 
-    // ── Marketplace stats ─────────────────────────────────────
     final marketState = ref.watch(marketplaceProvider);
     final notifier = ref.read(marketplaceProvider.notifier);
     final totalOrders = marketState.orders.length;
     final activeOrders = marketState.orders
         .where((o) => o.status != 'delivered' && o.status != 'cancelled')
         .length;
-    final myListings = _myListings;
-    final soldCount = _soldCount;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F5),
@@ -88,11 +84,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // ── Stats row ─────────────────────────────
-                  _buildStatsRow(totalOrders, activeOrders, myListings.length),
+                  _buildStatsRow(totalOrders, activeOrders, _myListings.length),
                   const SizedBox(height: 20),
-
-                  // ── My Orders ─────────────────────────────
                   _buildMenuSection(
                     title: 'কেনাকাটা',
                     items: [
@@ -118,8 +111,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-
-                  // ── My Listings ───────────────────────────
                   _buildMenuSection(
                     title: 'বিক্রয়',
                     items: [
@@ -127,11 +118,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         icon: Icons.storefront_outlined,
                         iconColor: AppTheme.primaryGreen,
                         label: 'আমার পণ্য তালিকা',
-                        sublabel: myListings.isEmpty
+                        sublabel: _myListings.isEmpty
                             ? 'কোনো পণ্য নেই'
-                            : '${myListings.length}টি পণ্য · $soldCount টি বিক্রিত',
+                            : '${_myListings.length}টি পণ্য · $_soldCount টি বিক্রিত',
                         onTap: () =>
-                            _showMyListings(context, myListings, soldCount),
+                            _showMyListings(context, _myListings, _soldCount),
                       ),
                       _MenuItem(
                         icon: Icons.add_box_outlined,
@@ -143,8 +134,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-
-                  // ── Edit Profile ──────────────────────────
                   _buildMenuSection(
                     title: 'প্রোফাইল',
                     items: [
@@ -163,8 +152,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-
-                  // ── Logout ────────────────────────────────
                   _buildMenuSection(
                     title: '',
                     items: [
@@ -520,23 +507,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                           height: 56,
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) =>
-                                              Container(
-                                            width: 56,
-                                            height: 56,
-                                            color: Colors.grey.shade200,
-                                            child: const Icon(
-                                                Icons.image_outlined,
-                                                color: Colors.grey),
-                                          ),
+                                              _imgPlaceholder(),
                                         )
-                                      : Container(
-                                          width: 56,
-                                          height: 56,
-                                          color: Colors.grey.shade200,
-                                          child: const Icon(
-                                              Icons.image_outlined,
-                                              color: Colors.grey),
-                                        ),
+                                      : _imgPlaceholder(),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -596,6 +569,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  Widget _imgPlaceholder() => Container(
+        width: 56,
+        height: 56,
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.image_outlined, color: Colors.grey),
+      );
+
   // ── Edit profile bottom sheet ─────────────────────────────────
   void _showEditProfile(
     BuildContext context, {
@@ -605,9 +585,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required String division,
   }) {
     final nameCtrl = TextEditingController(text: name);
-    final phoneCtrl = TextEditingController(text: phone);
-    final emailCtrl = TextEditingController(text: email);
     String selectedDivision = division.isNotEmpty ? division : 'ঢাকা';
+    bool isSaving = false;
 
     const divisions = [
       'ঢাকা',
@@ -652,16 +631,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // Name field
                 _sheetField(nameCtrl, 'নাম', Icons.person_outline),
                 const SizedBox(height: 12),
-                _sheetField(phoneCtrl, 'ফোন নম্বর', Icons.phone_outlined,
-                    keyboardType: TextInputType.phone),
+
+                // Phone — read-only, shown for info only
+                _sheetField(
+                  TextEditingController(text: phone),
+                  'ফোন নম্বর',
+                  Icons.phone_outlined,
+                  readOnly: true,
+                ),
                 const SizedBox(height: 12),
-                _sheetField(emailCtrl, 'ইমেইল', Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress),
+
+                // Email — read-only, shown for info only
+                _sheetField(
+                  TextEditingController(text: email),
+                  'ইমেইল',
+                  Icons.email_outlined,
+                  readOnly: true,
+                ),
                 const SizedBox(height: 12),
+
+                // Division dropdown
                 DropdownButtonFormField<String>(
-                  initialValue: selectedDivision,
+                  value: selectedDivision,
                   decoration: InputDecoration(
                     labelText: 'বিভাগ',
                     prefixIcon: const Icon(Icons.location_on_outlined,
@@ -691,36 +686,64 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       color: AppTheme.primaryGreen),
                 ),
                 const SizedBox(height: 20),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () async {
-                      // TODO: wire to SupabaseService.updateProfile(...)
-                      // await ref.read(supabaseServiceProvider).updateProfile(
-                      //   name: nameCtrl.text.trim(),
-                      //   phone: phoneCtrl.text.trim(),
-                      //   division: selectedDivision,
-                      // );
-                      // ref.read(authProvider.notifier).refresh();
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('প্রোফাইল আপডেট হয়েছে'),
-                          backgroundColor: AppTheme.primaryGreen,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            setSheetState(() => isSaving = true);
+
+                            // Capture nav/messenger before await
+                            final nav = Navigator.of(ctx);
+                            final messenger = ScaffoldMessenger.of(context);
+
+                            try {
+                              await SupabaseService.instance.updateProfile(
+                                name: nameCtrl.text.trim(),
+                                division: selectedDivision,
+                              );
+                              // Refresh auth so header updates immediately
+                              await ref.read(authProvider.notifier).refresh();
+                              nav.pop();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('প্রোফাইল আপডেট হয়েছে'),
+                                  backgroundColor: AppTheme.primaryGreen,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } catch (e) {
+                              setSheetState(() => isSaving = false);
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('আপডেট ব্যর্থ হয়েছে: $e'),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryGreen,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          AppTheme.primaryGreen.withValues(alpha: 0.5),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('সংরক্ষণ করুন',
-                        style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.bold)),
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2.5),
+                          )
+                        : const Text('সংরক্ষণ করুন',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -737,15 +760,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String label,
     IconData icon, {
     TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
   }) {
     return TextField(
       controller: ctrl,
       keyboardType: keyboardType,
+      readOnly: readOnly,
+      style: TextStyle(
+        color: readOnly ? Colors.grey.shade500 : Colors.black87,
+      ),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppTheme.primaryGreen, size: 20),
         filled: true,
-        fillColor: const Color(0xFFF8FAF8),
+        fillColor: readOnly ? Colors.grey.shade100 : const Color(0xFFF8FAF8),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
@@ -758,8 +786,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide:
-              const BorderSide(color: AppTheme.primaryGreen, width: 1.5),
+          borderSide: BorderSide(
+            color: readOnly ? Colors.grey.shade200 : AppTheme.primaryGreen,
+            width: readOnly ? 1 : 1.5,
+          ),
         ),
       ),
     );

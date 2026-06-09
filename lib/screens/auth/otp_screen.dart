@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../core/router.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/supabase_service.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
@@ -79,6 +80,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _errorMessage = null;
     });
 
+    // Capture nav before any await gap
+    final nav = Navigator.of(context);
+
     try {
       final service = SupabaseService();
       AppUser? user;
@@ -91,9 +95,14 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
       if (!mounted) return;
 
+      // Refresh auth provider immediately after OTP verification
+      // so home_screen gets the real user without needing a hot restart.
+      await ref.read(authProvider.notifier).refresh();
+
+      if (!mounted) return;
+
       if (user == null || user.name.isEmpty) {
-        Navigator.pushNamed(
-          context,
+        nav.pushNamed(
           AppRouter.register,
           arguments: {
             if (_phone != null) 'phone': _phone,
@@ -102,13 +111,13 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           },
         );
       } else {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
+        nav.pushNamedAndRemoveUntil(
           AppRouter.home,
           (route) => false,
         );
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _errorMessage = _friendlyError(e.toString()));
       for (final c in _controllers) {
         c.clear();
@@ -140,7 +149,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         );
       }
     } catch (e) {
-      setState(() => _errorMessage = 'পুনরায় পাঠাতে ব্যর্থ হয়েছে');
+      if (mounted)
+        setState(() => _errorMessage = 'পুনরায় পাঠাতে ব্যর্থ হয়েছে');
     } finally {
       if (mounted) setState(() => _isResending = false);
     }
