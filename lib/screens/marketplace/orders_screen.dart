@@ -235,6 +235,7 @@ class _OrderCard extends StatelessWidget {
       ),
       child: Column(
         children: [
+          // ── Status header ──
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
@@ -258,10 +259,14 @@ class _OrderCard extends StatelessWidget {
               ],
             ),
           ),
+
+          // ── Product row ──
           Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Thumbnail
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: order.product.primaryImage != null
@@ -275,15 +280,21 @@ class _OrderCard extends StatelessWidget {
                       : _imgFallback(),
                 ),
                 const SizedBox(width: 12),
+
+                // FIX: Expanded so the middle column takes remaining space
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order.product.title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: Color(0xFF1A1A1A))),
+                      Text(
+                        order.product.title,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF1A1A1A)),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         '${order.quantity} ${order.product.unit} × ৳${order.product.price.toStringAsFixed(0)}',
@@ -291,18 +302,26 @@ class _OrderCard extends StatelessWidget {
                             color: Colors.grey.shade600, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
+
+                      // FIX: payment + date row — each text wrapped in Flexible
                       Row(
                         children: [
                           Icon(Icons.payment_outlined,
                               size: 13, color: Colors.grey.shade500),
                           const SizedBox(width: 3),
-                          Text(_paymentLabel(order.paymentMethod),
+                          Flexible(
+                            child: Text(
+                              _paymentLabel(order.paymentMethod),
                               style: TextStyle(
-                                  color: Colors.grey.shade500, fontSize: 12)),
-                          const SizedBox(width: 10),
+                                  color: Colors.grey.shade500, fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Icon(Icons.calendar_today_outlined,
                               size: 12, color: Colors.grey.shade500),
                           const SizedBox(width: 3),
+                          // FIX: date is fixed-format so just needs no-shrink protection
                           Text(
                             '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
                             style: TextStyle(
@@ -313,14 +332,20 @@ class _OrderCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+
+                // Right column: price + action button
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('৳${order.total.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                            color: AppTheme.primaryGreen,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16)),
+                    Text(
+                      '৳${order.total.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                          color: AppTheme.primaryGreen,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16),
+                    ),
                     const SizedBox(height: 8),
                     if (order.status == 'delivered' ||
                         order.status == 'cancelled')
@@ -341,6 +366,7 @@ class _OrderCard extends StatelessWidget {
               ],
             ),
           ),
+
           if (order.status != 'cancelled') _buildProgressTracker(order.status),
         ],
       ),
@@ -395,61 +421,76 @@ class _OrderCard extends StatelessWidget {
       child: Column(
         children: [
           Divider(color: Colors.grey.shade100, height: 16),
+          // FIX: restructured so each step node is NOT double-wrapped in Expanded.
+          // Steps 0-2: Expanded(Row([node, Expanded(connector)]))
+          // Step 3 (last): just the node, no wrapping Expanded.
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: List.generate(steps.length, (i) {
               final done = i <= current;
               final active = i == current;
+
+              final stepNode = Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color:
+                          done ? AppTheme.primaryGreen : Colors.grey.shade200,
+                      boxShadow: active
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.primaryGreen
+                                    .withValues(alpha: 0.3),
+                                blurRadius: 6,
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Icon(icons[i],
+                        size: 14,
+                        color: done ? Colors.white : Colors.grey.shade400),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    labels[i],
+                    style: TextStyle(
+                      fontSize: 9,
+                      color:
+                          done ? AppTheme.primaryGreen : Colors.grey.shade400,
+                      fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              );
+
+              // Last step: no connector after it
+              if (i == steps.length - 1) {
+                return stepNode;
+              }
+
+              // All other steps: node + expanding connector line
               return Expanded(
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: done
-                                ? AppTheme.primaryGreen
-                                : Colors.grey.shade200,
-                            boxShadow: active
-                                ? [
-                                    BoxShadow(
-                                      color: AppTheme.primaryGreen
-                                          .withValues(alpha: 0.3),
-                                      blurRadius: 6,
-                                    )
-                                  ]
-                                : null,
-                          ),
-                          child: Icon(icons[i],
-                              size: 14,
-                              color:
-                                  done ? Colors.white : Colors.grey.shade400),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(labels[i],
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: done
-                                  ? AppTheme.primaryGreen
-                                  : Colors.grey.shade400,
-                              fontWeight:
-                                  active ? FontWeight.bold : FontWeight.normal,
-                            )),
-                      ],
-                    ),
-                    if (i < steps.length - 1)
-                      Expanded(
+                    stepNode,
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 13, bottom: 18),
                         child: Container(
                           height: 2,
-                          margin: const EdgeInsets.only(bottom: 18),
                           color: i < current
                               ? AppTheme.primaryGreen
                               : Colors.grey.shade200,
                         ),
                       ),
+                    ),
                   ],
                 ),
               );

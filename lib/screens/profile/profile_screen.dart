@@ -230,45 +230,60 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                // FIX: name could be long — constrain width + ellipsis
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (division.isNotEmpty) ...[
-                      const Icon(Icons.location_on,
-                          color: Colors.white70, size: 14),
-                      const SizedBox(width: 3),
-                      Text(
-                        division,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 13),
+                // FIX: wrap in flexible row so long division names don't overflow
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (division.isNotEmpty) ...[
+                        const Icon(Icons.location_on,
+                            color: Colors.white70, size: 14),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            division,
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          role == 'farmer' ? 'কৃষক' : 'ক্রেতা',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600),
+                        ),
                       ),
-                      const SizedBox(width: 12),
                     ],
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        role == 'farmer' ? 'কৃষক' : 'ক্রেতা',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -280,26 +295,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // ── Stats row ────────────────────────────────────────────────
   Widget _buildStatsRow(int totalOrders, int activeOrders, int listings) {
-    return Row(
-      children: [
-        _StatCard(
-            value: '$totalOrders',
-            label: 'মোট অর্ডার',
-            icon: Icons.receipt_long_outlined,
-            color: const Color(0xFF3B82F6)),
-        const SizedBox(width: 10),
-        _StatCard(
-            value: '$activeOrders',
-            label: 'চলমান',
-            icon: Icons.local_shipping_outlined,
-            color: const Color(0xFFF59E0B)),
-        const SizedBox(width: 10),
-        _StatCard(
-            value: '$listings',
-            label: 'আমার পণ্য',
-            icon: Icons.storefront_outlined,
-            color: AppTheme.primaryGreen),
-      ],
+    // FIX: use IntrinsicHeight so all cards match the tallest one, preventing
+    // bottom overflow when a label wraps to two lines on small screens.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _StatCard(
+              value: '$totalOrders',
+              label: 'মোট অর্ডার',
+              icon: Icons.receipt_long_outlined,
+              color: const Color(0xFF3B82F6)),
+          const SizedBox(width: 10),
+          _StatCard(
+              value: '$activeOrders',
+              label: 'চলমান',
+              icon: Icons.local_shipping_outlined,
+              color: const Color(0xFFF59E0B)),
+          const SizedBox(width: 10),
+          _StatCard(
+              value: '$listings',
+              label: 'আমার পণ্য',
+              icon: Icons.storefront_outlined,
+              color: AppTheme.primaryGreen),
+        ],
+      ),
     );
   }
 
@@ -512,30 +532,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       : _imgPlaceholder(),
                                 ),
                                 const SizedBox(width: 12),
+                                // FIX: Expanded so middle column doesn't push status badge off-screen
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(p.title,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 14)),
                                       Text(
-                                          '৳${p.price.toStringAsFixed(0)} / ${p.unit}',
-                                          style: TextStyle(
-                                              color: Colors.grey.shade600,
-                                              fontSize: 12)),
-                                      Text('স্টক: ${p.stock} ${p.unit}',
-                                          style: TextStyle(
-                                              color: p.stock > 0
-                                                  ? AppTheme.primaryGreen
-                                                  : Colors.red.shade400,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500)),
+                                        p.title,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      // FIX: price + unit in one Text to avoid Row overflow
+                                      Text(
+                                        '৳${p.price.toStringAsFixed(0)} / ${p.unit}',
+                                        style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        'স্টক: ${p.stock} ${p.unit}',
+                                        style: TextStyle(
+                                            color: p.stock > 0
+                                                ? AppTheme.primaryGreen
+                                                : Colors.red.shade400,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ],
                                   ),
                                 ),
+                                const SizedBox(width: 8),
+                                // Status badge — fixed width so it never wraps
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 4),
@@ -631,12 +664,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-
-                // Name field
                 _sheetField(nameCtrl, 'নাম', Icons.person_outline),
                 const SizedBox(height: 12),
-
-                // Phone — read-only, shown for info only
                 _sheetField(
                   TextEditingController(text: phone),
                   'ফোন নম্বর',
@@ -644,8 +673,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   readOnly: true,
                 ),
                 const SizedBox(height: 12),
-
-                // Email — read-only, shown for info only
                 _sheetField(
                   TextEditingController(text: email),
                   'ইমেইল',
@@ -653,10 +680,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   readOnly: true,
                 ),
                 const SizedBox(height: 12),
-
-                // Division dropdown
                 DropdownButtonFormField<String>(
-                  value: selectedDivision,
+                  initialValue: selectedDivision,
                   decoration: InputDecoration(
                     labelText: 'বিভাগ',
                     prefixIcon: const Icon(Icons.location_on_outlined,
@@ -686,7 +711,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       color: AppTheme.primaryGreen),
                 ),
                 const SizedBox(height: 20),
-
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -695,17 +719,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ? null
                         : () async {
                             setSheetState(() => isSaving = true);
-
-                            // Capture nav/messenger before await
                             final nav = Navigator.of(ctx);
                             final messenger = ScaffoldMessenger.of(context);
-
                             try {
                               await SupabaseService.instance.updateProfile(
                                 name: nameCtrl.text.trim(),
                                 division: selectedDivision,
                               );
-                              // Refresh auth so header updates immediately
                               await ref.read(authProvider.notifier).refresh();
                               nav.pop();
                               messenger.showSnackBar(
@@ -898,7 +918,7 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -911,6 +931,7 @@ class _StatCard extends StatelessWidget {
           ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min, // FIX: don't over-expand
           children: [
             Container(
               padding: const EdgeInsets.all(8),
@@ -921,12 +942,22 @@ class _StatCard extends StatelessWidget {
               child: Icon(icon, color: color, size: 18),
             ),
             const SizedBox(height: 8),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-            Text(label,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                textAlign: TextAlign.center),
+            // FIX: value text can be wide on large numbers — ellipsis guard
+            Text(
+              value,
+              style: TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.bold, color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            // FIX: label allowed to wrap to 2 lines instead of overflowing
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

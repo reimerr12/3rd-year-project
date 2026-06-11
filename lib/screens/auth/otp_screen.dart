@@ -149,8 +149,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         );
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _errorMessage = 'পুনরায় পাঠাতে ব্যর্থ হয়েছে');
+      }
     } finally {
       if (mounted) setState(() => _isResending = false);
     }

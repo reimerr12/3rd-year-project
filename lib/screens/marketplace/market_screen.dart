@@ -22,7 +22,6 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   @override
   void initState() {
     super.initState();
-    // Load fresh from Supabase every time screen opens
     Future.microtask(() {
       ref.read(marketplaceProvider.notifier).loadProducts();
       ref.read(marketplaceProvider.notifier).loadCart();
@@ -229,7 +228,8 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.72,
+        childAspectRatio:
+            0.68, // FIX: was 0.72 — extra height prevents bottom overflow
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
@@ -440,11 +440,14 @@ class _ProductCard extends StatelessWidget {
                 ),
               ),
             ),
+            // FIX: use Expanded with mainAxisSize.min + no bare Spacer fighting constrained height
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize:
+                      MainAxisSize.min, // FIX: don't over-expand column
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -470,19 +473,31 @@ class _ProductCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('৳${product.price.toStringAsFixed(0)}',
+                        // FIX: Flexible prevents price column from overflowing right
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '৳${product.price.toStringAsFixed(0)}',
                                 style: const TextStyle(
                                     color: AppTheme.primaryGreen,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14)),
-                            Text('/${product.unit}',
+                                    fontSize: 14),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                '/${product.unit}',
                                 style: TextStyle(
-                                    color: Colors.grey.shade500, fontSize: 10)),
-                          ],
+                                    color: Colors.grey.shade500, fontSize: 10),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(
+                            width: 4), // FIX: small gap so button never clips
                         GestureDetector(
                           onTap: product.inStock ? onAddToCart : null,
                           child: Container(
