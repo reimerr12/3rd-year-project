@@ -12,16 +12,199 @@ import '../../providers/notifications_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/marketplace_provider.dart';
 import '../../providers/calendar_provider.dart';
-
-// ---------------------------------------------------------------------------
-// Bilingual helper
-// ---------------------------------------------------------------------------
+import '../../providers/lang_provider.dart';
 
 String _t(bool bn, String bangla, String english) => bn ? bangla : english;
 
 // ---------------------------------------------------------------------------
-// HOME SCREEN
+// Weather emoji helper — day/night aware
 // ---------------------------------------------------------------------------
+String _weatherEmoji(String iconCode) {
+  if (iconCode.length < 2) return '🌤️';
+  final core = iconCode.substring(0, 2);
+  final isNight = iconCode.endsWith('n');
+  switch (core) {
+    case '01':
+      return isNight ? '🌙' : '☀️';
+    case '02':
+      return isNight ? '🌙' : '🌤️';
+    case '03':
+      return '⛅';
+    case '04':
+      return '☁️';
+    case '09':
+      return '🌧️';
+    case '10':
+      return isNight ? '🌧️' : '🌦️';
+    case '11':
+      return '⛈️';
+    case '13':
+      return '❄️';
+    case '50':
+      return '🌫️';
+    default:
+      return '🌤️';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Add-to-cart confirmation snackbar
+// ---------------------------------------------------------------------------
+void _showAddedToCartSnackBar(BuildContext context, Product product, bool bn) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _t(bn, '${product.title} কার্টে যোগ হয়েছে',
+                  '${product.title} added to cart'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: AppTheme.primaryGreen,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pressable cart button — extracted widget so each card owns its own bool
+// ---------------------------------------------------------------------------
+class _PressableCartButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _PressableCartButton({required this.onTap});
+
+  @override
+  State<_PressableCartButton> createState() => _PressableCartButtonState();
+}
+
+class _PressableCartButtonState extends State<_PressableCartButton> {
+  bool _pressing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressing = true),
+      onTapUp: (_) {
+        setState(() => _pressing = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressing = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: _pressing ? Colors.white : AppTheme.primaryGreen,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: AppTheme.primaryGreen,
+            width: 1.5,
+          ),
+        ),
+        child: Icon(
+          Icons.add_shopping_cart_rounded,
+          color: _pressing ? AppTheme.primaryGreen : Colors.white,
+          size: 16,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Service Card — extracted widget with press feedback
+// ---------------------------------------------------------------------------
+class _ServiceCard extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color bgColor;
+  final VoidCallback onTap;
+
+  const _ServiceCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.bgColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_ServiceCard> createState() => _ServiceCardState();
+}
+
+class _ServiceCardState extends State<_ServiceCard> {
+  bool _pressing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressing = true),
+      onTapUp: (_) {
+        setState(() => _pressing = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressing = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _pressing ? widget.color : Colors.transparent,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _pressing ? 0.02 : 0.05),
+              blurRadius: _pressing ? 4 : 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              child: CircleAvatar(
+                radius: 24,
+                backgroundColor: _pressing
+                    ? widget.color.withValues(alpha: 0.15)
+                    : widget.bgColor,
+                child: Icon(widget.icon, color: widget.color, size: 24),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: Text(
+                widget.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _pressing ? widget.color : const Color(0xFF1A1A1A),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -33,7 +216,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _showTomorrow = false;
   int _currentTabIndex = 0;
-  bool _bn = true; // language toggle
 
   @override
   void initState() {
@@ -61,49 +243,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     setState(() => _currentTabIndex = index);
   }
 
-  IconData _iconFromCode(String iconCode) {
-    switch (iconCode) {
-      case '01d':
-        return Icons.wb_sunny_rounded;
-      case '01n':
-        return Icons.nightlight_round;
-      case '02d':
-      case '03d':
-        return Icons.wb_cloudy_rounded;
-      case '02n':
-      case '03n':
-        return Icons.cloud_queue_rounded;
-      case '04d':
-      case '04n':
-        return Icons.cloud_rounded;
-      case '09d':
-      case '09n':
-      case '10d':
-      case '10n':
-        return Icons.umbrella_rounded;
-      case '11d':
-      case '11n':
-        return Icons.thunderstorm_rounded;
-      case '13d':
-      case '13n':
-        return Icons.ac_unit_rounded;
-      case '50d':
-      case '50n':
-        return Icons.blur_on_rounded;
-      default:
-        return Icons.wb_cloudy_rounded;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
     final user = ref.watch(currentUserProvider);
     final userName =
-        user?.name.isNotEmpty == true ? user!.name : _t(_bn, 'কৃষক', 'Farmer');
+        user?.name.isNotEmpty == true ? user!.name : _t(bn, 'কৃষক', 'Farmer');
 
-    // Date — Bengali or English locale
     final now = DateTime.now();
-    final dateStr = _bn
+    final dateStr = bn
         ? DateFormat('EEEE, d MMMM yyyy', 'bn').format(now)
         : DateFormat('EEEE, d MMMM yyyy', 'en').format(now);
 
@@ -121,38 +269,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. TOP BAR
-              _buildTopBar(context, userName, dateStr),
-
-              // 2. WEATHER
-              _buildWeatherSection(context),
-
-              // 3. SEARCH BAR
-              _buildSearchBar(),
-
+              _buildTopBar(context, userName, dateStr, bn),
+              _buildWeatherSection(context, bn),
               const SizedBox(height: 14),
-
-              // 4. PROMO BANNERS
               const _PromoImageCarousel(),
-
-              // 5. SEASONAL CROPS
               _buildSectionHeader(
-                _t(_bn, 'এই মৌসুমের সেরা ফসল', 'Best Crops This Season'),
-                _t(_bn, 'সব দেখুন', 'See All'),
+                _t(bn, 'এই মৌসুমের সেরা ফসল', 'Best Crops This Season'),
+                _t(bn, 'সব দেখুন', 'See All'),
                 onActionTap: () =>
                     Navigator.pushNamed(context, AppRouter.calendar),
               ),
-              _buildSeasonalCrops(activeCrops, calendarAsync.isLoading),
-
-              // 6. SERVICES
+              _buildSeasonalCrops(activeCrops, calendarAsync.isLoading, bn),
               _buildSectionHeader(
-                  _t(_bn, 'আমাদের সেবাসমূহ', 'Our Services'), ''),
-              _buildServicesGrid(),
-
-              // 7. MARKETPLACE
+                  _t(bn, 'আমাদের সেবাসমূহ', 'Our Services'), ''),
+              _buildServicesGrid(bn),
               _buildSectionHeader(
-                _t(_bn, 'বাজারের নতুন পণ্য', 'New in the Market'),
-                _t(_bn, 'দোকানে যান', 'Go to Shop'),
+                _t(bn, 'বাজারের নতুন পণ্য', 'New in the Market'),
+                _t(bn, 'দোকানে যান', 'Go to Shop'),
                 onActionTap: () =>
                     Navigator.pushNamed(context, AppRouter.market),
               ),
@@ -160,9 +293,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ? const Padding(
                       padding: EdgeInsets.symmetric(vertical: 32),
                       child: Center(
-                        child: CircularProgressIndicator(
-                            color: AppTheme.primaryGreen),
-                      ),
+                          child: CircularProgressIndicator(
+                              color: AppTheme.primaryGreen)),
                     )
                   : previewProducts.isEmpty
                       ? Padding(
@@ -170,15 +302,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               horizontal: 16, vertical: 24),
                           child: Center(
                             child: Text(
-                              _t(_bn, 'কোনো পণ্য পাওয়া যায়নি',
+                              _t(bn, 'কোনো পণ্য পাওয়া যায়নি',
                                   'No products found'),
                               style: TextStyle(
                                   color: Colors.grey.shade500, fontSize: 14),
                             ),
                           ),
                         )
-                      : _buildProductGrid(previewProducts),
-
+                      : _buildProductGrid(previewProducts, bn),
               const SizedBox(height: 120),
             ],
           ),
@@ -186,44 +317,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       floatingActionButton: _buildFAB(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(bn),
     );
   }
 
   // -------------------------------------------------------------------------
-  // TOP BAR — greeting + date | notification bell | EN/বাং toggle
+  // TOP BAR
   // -------------------------------------------------------------------------
-  Widget _buildTopBar(BuildContext context, String userName, String dateStr) {
-    final greeting =
-        _t(_bn, 'আসসালামু আলাইকুম, $userName!', 'Hello, $userName!');
-
+  Widget _buildTopBar(
+      BuildContext context, String userName, String dateStr, bool bn) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
       child: Row(
         children: [
-          // Greeting + date
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  greeting,
-                  style: const TextStyle(
-                    color: AppTheme.primaryGreen,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  dateStr,
-                  style: const TextStyle(color: Colors.black54, fontSize: 13),
-                ),
+                Text(userName,
+                    style: const TextStyle(
+                        color: AppTheme.primaryGreen,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
+                Text(dateStr,
+                    style:
+                        const TextStyle(color: Colors.black54, fontSize: 13)),
               ],
             ),
           ),
           const SizedBox(width: 12),
-
           // Notification bell
           GestureDetector(
             onTap: () => Navigator.pushNamed(context, AppRouter.notifications),
@@ -234,14 +357,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.notifications_outlined,
-                    color: AppTheme.primaryGreen,
-                    size: 20,
-                  ),
+                      color: Colors.grey.shade200, shape: BoxShape.circle),
+                  child: const Icon(Icons.notifications_outlined,
+                      color: Colors.black87, size: 20),
                 ),
                 if (ref.watch(unreadCountProvider) > 0)
                   Positioned(
@@ -261,24 +379,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           const SizedBox(width: 10),
-
-          // Language toggle (replaces avatar)
+          // Global language toggle
           GestureDetector(
-            onTap: () => setState(() => _bn = !_bn),
+            onTap: () => ref.read(langProvider.notifier).state = !bn,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppTheme.primaryGreen,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _bn ? 'EN' : 'বাং',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+                  color: AppTheme.primaryGreen,
+                  borderRadius: BorderRadius.circular(20)),
+              child: Text(bn ? 'EN' : 'বাং',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -289,7 +402,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // -------------------------------------------------------------------------
   // WEATHER SECTION
   // -------------------------------------------------------------------------
-  Widget _buildWeatherSection(BuildContext context) {
+  Widget _buildWeatherSection(BuildContext context, bool bn) {
     final weatherAsync = ref.watch(weatherProvider);
 
     return weatherAsync.when(
@@ -305,7 +418,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onPressed: () => ref.read(weatherProvider.notifier).refresh(),
             icon: const Icon(Icons.refresh, color: AppTheme.primaryGreen),
             label: Text(
-              _t(_bn, 'আবহাওয়া লোড করা যায়নি। পুনরায় চেষ্টা করুন',
+              _t(bn, 'আবহাওয়া লোড করা যায়নি। পুনরায় চেষ্টা করুন',
                   'Could not load weather. Tap to retry.'),
               style: const TextStyle(color: AppTheme.primaryGreen),
             ),
@@ -352,7 +465,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   GestureDetector(
                     onTap: () => setState(() => _showTomorrow = false),
                     child: Text(
-                      _t(_bn, 'আজকের আবহাওয়া', "Today's Weather"),
+                      _t(bn, 'আজকের আবহাওয়া', "Today's Weather"),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -361,18 +474,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                   const Spacer(),
-                  TextButton(
-                    onPressed: () =>
+                  GestureDetector(
+                    onTap: () =>
                         Navigator.pushNamed(context, AppRouter.weather),
                     child: Row(
                       children: [
                         Text(
-                          _t(_bn, 'পরবর্তী ৫ দিন', 'Next 5 Days'),
+                          _t(bn, 'পরবর্তী ৫ দিন', 'Next 5 Days'),
                           style: const TextStyle(
-                              color: AppTheme.primaryGreen, fontSize: 12),
+                              color: AppTheme.primaryGreen,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600),
                         ),
-                        const Icon(Icons.chevron_right,
-                            size: 16, color: AppTheme.primaryGreen),
+                        const SizedBox(width: 4),
+                        Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color:
+                                AppTheme.primaryGreen.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.arrow_forward_ios_rounded,
+                              size: 10, color: AppTheme.primaryGreen),
+                        ),
                       ],
                     ),
                   ),
@@ -383,7 +508,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               height: 120,
               child: visibleHourly.isEmpty
                   ? Center(
-                      child: Text(_t(_bn, 'আবহাওয়ার কোনো তথ্য পাওয়া যায়নি',
+                      child: Text(_t(bn, 'আবহাওয়ার কোনো তথ্য পাওয়া যায়নি',
                           'No weather data available')))
                   : ListView.builder(
                       scrollDirection: Axis.horizontal,
@@ -393,7 +518,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       itemBuilder: (context, index) {
                         final item = visibleHourly[index];
                         final isActive = item == activeHourlyItem;
-                        return _buildWeatherCard(item, isActive);
+                        return _buildWeatherCard(item, isActive, bn);
                       },
                     ),
             ),
@@ -404,18 +529,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildWeatherCard(HourlyWeather w, bool isActive) {
-    // Time label: Bengali digits/transliteration OR plain English
+  Widget _buildWeatherCard(HourlyWeather w, bool isActive, bool bn) {
     final rawTimeStr = DateFormat('h a').format(w.time);
-    final timeLabel = _bn ? WeatherData.toBangla(rawTimeStr) : rawTimeStr;
-
-    // Temperature
-    final tempLabel = _bn
+    final timeLabel = bn ? WeatherData.toBangla(rawTimeStr) : rawTimeStr;
+    final tempLabel = bn
         ? '${WeatherData.toBangla(w.tempCelsius.round())}°'
         : '${w.tempCelsius.round()}°';
-
-    // Condition
-    final condLabel = _bn
+    final condLabel = bn
         ? WeatherData.getShortBanglaCondition(w.iconCode)
         : WeatherData.getShortEnglishCondition(w.iconCode);
 
@@ -428,84 +548,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         borderRadius: BorderRadius.circular(25),
         boxShadow: const [
           BoxShadow(
-            color: Color(0xFFE0DEDE),
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
+              color: Color(0xFFE0DEDE), blurRadius: 6, offset: Offset(0, 3)),
         ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            timeLabel,
-            style: TextStyle(
-              color: isActive ? Colors.white70 : Colors.grey,
-              fontSize: 9,
-            ),
-          ),
+          Text(timeLabel,
+              style: TextStyle(
+                  color: isActive ? Colors.white70 : Colors.grey, fontSize: 9)),
           const SizedBox(height: 4),
-          Icon(
-            _iconFromCode(w.iconCode),
-            color: isActive ? Colors.white : AppTheme.primaryGreen,
-            size: 18,
-          ),
+          Text(_weatherEmoji(w.iconCode), style: const TextStyle(fontSize: 18)),
           const SizedBox(height: 4),
-          Text(
-            tempLabel,
-            style: TextStyle(
-              color: isActive ? Colors.white : Colors.black87,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(tempLabel,
+              style: TextStyle(
+                  color: isActive ? Colors.white : Colors.black87,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
-          Text(
-            condLabel,
-            style: TextStyle(
-              color: isActive ? Colors.white70 : Colors.grey[600],
-              fontSize: 9,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text(condLabel,
+              style: TextStyle(
+                  color: isActive ? Colors.white70 : Colors.grey[600],
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500)),
         ],
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------------------
-  // SEARCH BAR
-  // -------------------------------------------------------------------------
-  Widget _buildSearchBar() {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, AppRouter.market),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        height: 46,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(color: const Color(0xFFE0E0E0)),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 14),
-            const Icon(Icons.search, color: AppTheme.primaryGreen, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              _t(_bn, 'পণ্য বা সেবা খুঁজুন...',
-                  'Search products or services...'),
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -513,34 +579,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // -------------------------------------------------------------------------
   // SECTION HEADER
   // -------------------------------------------------------------------------
-  Widget _buildSectionHeader(
-    String title,
-    String action, {
-    VoidCallback? onActionTap,
-  }) {
+  Widget _buildSectionHeader(String title, String action,
+      {VoidCallback? onActionTap}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF111D13),
-            ),
-          ),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF111D13))),
           if (action.isNotEmpty)
             GestureDetector(
               onTap: onActionTap,
-              child: Text(
-                action,
-                style: const TextStyle(
-                  color: AppTheme.primaryGreen,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
+              child: Row(
+                children: [
+                  Text(action,
+                      style: const TextStyle(
+                          color: AppTheme.primaryGreen,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13)),
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.arrow_forward_ios_rounded,
+                        size: 10, color: AppTheme.primaryGreen),
+                  ),
+                ],
               ),
             ),
         ],
@@ -551,22 +623,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // -------------------------------------------------------------------------
   // SEASONAL CROPS
   // -------------------------------------------------------------------------
-  Widget _buildSeasonalCrops(List<CropCalendar> crops, bool isLoading) {
+  Widget _buildSeasonalCrops(
+      List<CropCalendar> crops, bool isLoading, bool bn) {
     if (isLoading) {
       return const SizedBox(
         height: 120,
         child: Center(
-          child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-        ),
+            child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
       );
     }
-
     if (crops.isEmpty) {
       return SizedBox(
         height: 80,
         child: Center(
           child: Text(
-            _t(_bn, 'এই মাসে কোনো ফসলের তথ্য নেই',
+            _t(bn, 'এই মাসে কোনো ফসলের তথ্য নেই',
                 'No crop data for this month'),
             style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
           ),
@@ -574,7 +645,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    // Month name lists for both languages
     final monthNamesBn = [
       '',
       'জানু',
@@ -588,7 +658,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'সেপ্টে',
       'অক্টো',
       'নভে',
-      'ডিসে',
+      'ডিসে'
     ];
     final monthNamesEn = [
       '',
@@ -603,7 +673,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'Sep',
       'Oct',
       'Nov',
-      'Dec',
+      'Dec'
     ];
 
     return SizedBox(
@@ -615,20 +685,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         itemCount: crops.length,
         itemBuilder: (context, index) {
           final crop = crops[index];
-          final months = _bn ? monthNamesBn : monthNamesEn;
+          final months = bn ? monthNamesBn : monthNamesEn;
           final sowList = crop.sowMonths;
           final harvestList = crop.harvestMonths;
           String period = '';
           if (sowList.isNotEmpty && harvestList.isNotEmpty) {
-            final sowName = months[sowList.first.clamp(1, 12)];
-            final harvestName = months[harvestList.last.clamp(1, 12)];
-            period = '$sowName - $harvestName';
+            period =
+                '${months[sowList.first.clamp(1, 12)]} - ${months[harvestList.last.clamp(1, 12)]}';
           } else if (sowList.isNotEmpty) {
             period = months[sowList.first.clamp(1, 12)];
           }
-
-          // Crop name — use English name if available and in EN mode
-          final cropLabel = (!_bn) ? crop.cropNameEn : crop.cropNameBn;
+          final cropLabel = (!bn) ? crop.cropNameEn : crop.cropNameBn;
 
           return Padding(
             padding: const EdgeInsets.only(right: 18),
@@ -644,55 +711,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppTheme.primaryGreen.withValues(alpha: 0.08),
-                        border: Border.all(
-                          color: AppTheme.primaryGreen,
-                          width: 2,
-                        ),
+                        border:
+                            Border.all(color: AppTheme.primaryGreen, width: 2),
                       ),
                       child: Center(
                         child: ClipOval(
                           child: crop.imageUrl != null
-                              ? Image.network(
-                                  crop.imageUrl!,
+                              ? Image.network(crop.imageUrl!,
                                   height: 60,
                                   width: 60,
                                   fit: BoxFit.cover,
                                   errorBuilder: (ctx, _, __) => const Icon(
-                                    Icons.grass,
-                                    color: AppTheme.primaryGreen,
-                                    size: 28,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.grass,
-                                  color: AppTheme.primaryGreen,
-                                  size: 28,
-                                ),
+                                      Icons.grass,
+                                      color: AppTheme.primaryGreen,
+                                      size: 28))
+                              : const Icon(Icons.grass,
+                                  color: AppTheme.primaryGreen, size: 28),
                         ),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      cropLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: Colors.black,
-                      ),
-                    ),
-                    if (period.isNotEmpty)
-                      Text(
-                        period,
+                    Text(cropLabel,
                         maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 10,
-                        ),
-                      ),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                            color: Colors.black)),
+                    if (period.isNotEmpty)
+                      Text(period,
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Colors.grey.shade600, fontSize: 10)),
                   ],
                 ),
               ),
@@ -706,37 +758,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // -------------------------------------------------------------------------
   // SERVICES GRID
   // -------------------------------------------------------------------------
-  Widget _buildServicesGrid() {
+  Widget _buildServicesGrid(bool bn) {
     final services = <Map<String, dynamic>>[
       {
         'icon': Icons.agriculture,
         'labelBn': 'যন্ত্রপাতি ভাড়া',
         'labelEn': 'Equipment Rental',
         'route': AppRouter.rentals,
+        'color': const Color(0xFFFF9800),
+        'bgColor': const Color(0xFFFFF3E0),
       },
       {
         'icon': Icons.medical_services_outlined,
         'labelBn': 'কৃষি ডাক্তার',
         'labelEn': 'Agri Doctor',
         'route': AppRouter.doctors,
+        'color': const Color(0xFFE91E63),
+        'bgColor': const Color(0xFFFCE4EC),
       },
       {
         'icon': Icons.menu_book_outlined,
         'labelBn': 'চাষ নির্দেশিকা',
         'labelEn': 'Guidelines',
         'route': AppRouter.guidelines,
+        'color': const Color(0xFF009688),
+        'bgColor': const Color(0xFFE0F2F1),
       },
       {
         'icon': Icons.landscape_outlined,
         'labelBn': 'মাটির গুণমান',
         'labelEn': 'Soil Quality',
         'route': AppRouter.soil,
+        'color': const Color(0xFF8BC34A),
+        'bgColor': const Color(0xFFF1F8E9),
       },
       {
         'icon': Icons.calendar_month_outlined,
         'labelBn': 'ফসল ক্যালেন্ডার',
         'labelEn': 'Crop Calendar',
         'route': AppRouter.calendar,
+        'color': const Color(0xFF4CAF50),
+        'bgColor': const Color(0xFFE8F5E9),
       },
     ];
 
@@ -754,50 +816,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         itemCount: services.length,
         itemBuilder: (context, index) {
           final svc = services[index];
-          return GestureDetector(
+          return _ServiceCard(
+            icon: svc['icon'] as IconData,
+            label: bn ? svc['labelBn'] as String : svc['labelEn'] as String,
+            color: svc['color'] as Color,
+            bgColor: svc['bgColor'] as Color,
             onTap: () => Navigator.pushNamed(context, svc['route'] as String),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: const Color(0xFFF0F4F0),
-                    child: Icon(
-                      svc['icon'] as IconData,
-                      color: AppTheme.primaryGreen,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Flexible(
-                    child: Text(
-                      _bn ? svc['labelBn'] as String : svc['labelEn'] as String,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           );
         },
       ),
@@ -805,9 +829,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // MARKETPLACE PRODUCT GRID
+  // PRODUCT GRID
   // -------------------------------------------------------------------------
-  Widget _buildProductGrid(List<Product> products) {
+  Widget _buildProductGrid(List<Product> products, bool bn) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GridView.builder(
@@ -823,11 +847,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         itemBuilder: (context, index) {
           final product = products[index];
           return GestureDetector(
-            onTap: () => Navigator.pushNamed(
-              context,
-              AppRouter.productDetail,
-              arguments: product,
-            ),
+            onTap: () => Navigator.pushNamed(context, AppRouter.productDetail,
+                arguments: product),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -852,12 +873,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(16)),
                             child: product.primaryImage != null
-                                ? Image.network(
-                                    product.primaryImage!,
+                                ? Image.network(product.primaryImage!,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) =>
-                                        _imgFallback(),
-                                  )
+                                        _imgFallback())
                                 : _imgFallback(),
                           ),
                         ),
@@ -872,15 +891,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   AppTheme.primaryGreen.withValues(alpha: 0.9),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text(
-                              // categoryBn always Bengali;
-                              // product model can add categoryEn later
-                              product.categoryBn,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold),
-                            ),
+                            child: Text(product.categoryBn,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ],
@@ -891,44 +906,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          product.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Color(0xFF2D2D2D),
-                          ),
-                        ),
+                        Text(product.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: Color(0xFF2D2D2D))),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              '৳${product.price.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                color: AppTheme.primaryGreen,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => ref
-                                  .read(marketplaceProvider.notifier)
-                                  .addToCart(product),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: AppTheme.primaryGreen,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.add_shopping_cart_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
+                            Text('৳${product.price.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                    color: AppTheme.primaryGreen,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15)),
+                            _PressableCartButton(
+                              onTap: () {
+                                ref
+                                    .read(marketplaceProvider.notifier)
+                                    .addToCart(product);
+                                _showAddedToCartSnackBar(context, product, bn);
+                              },
                             ),
                           ],
                         ),
@@ -947,51 +947,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _imgFallback() => Container(
         color: Colors.grey.shade100,
         child: Center(
-          child:
-              Icon(Icons.image_outlined, color: Colors.grey.shade400, size: 36),
-        ),
+            child: Icon(Icons.image_outlined,
+                color: Colors.grey.shade400, size: 36)),
       );
 
-  // -------------------------------------------------------------------------
-  // FAB
-  // -------------------------------------------------------------------------
   Widget _buildFAB() {
     return FloatingActionButton(
       onPressed: () => Navigator.pushNamed(context, AppRouter.aiChat),
       backgroundColor: AppTheme.primaryGreen,
       shape: const CircleBorder(),
-      child: const Icon(
-        Icons.psychology_outlined,
-        color: Colors.white,
-        size: 28,
-      ),
+      child: const Icon(Icons.auto_awesome, color: Colors.white, size: 26),
     );
   }
 
-  // -------------------------------------------------------------------------
-  // BOTTOM NAV
-  // -------------------------------------------------------------------------
-  Widget _buildBottomNav() {
+// ---------------------------------------------------------------------------
+// BOTTOM-NAV
+// ---------------------------------------------------------------------------
+
+  Widget _buildBottomNav(bool bn) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, -4))
         ],
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
         child: BottomNavigationBar(
           currentIndex: _currentTabIndex,
           onTap: _onTabTapped,
@@ -1006,16 +994,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           items: [
             BottomNavigationBarItem(
                 icon: const Icon(Icons.home_outlined),
-                label: _t(_bn, 'হোম', 'Home')),
+                label: _t(bn, 'হোম', 'Home')),
             BottomNavigationBarItem(
                 icon: const Icon(Icons.store_outlined),
-                label: _t(_bn, 'বাজার', 'Market')),
+                label: _t(bn, 'বাজার', 'Market')),
             BottomNavigationBarItem(
                 icon: const Icon(Icons.miscellaneous_services_outlined),
-                label: _t(_bn, 'সেবা', 'Services')),
+                label: _t(bn, 'সেবা', 'Services')),
             BottomNavigationBarItem(
                 icon: const Icon(Icons.person_outline),
-                label: _t(_bn, 'প্রোফাইল', 'Profile')),
+                label: _t(bn, 'প্রোফাইল', 'Profile')),
           ],
         ),
       ),
@@ -1024,7 +1012,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// PROMO IMAGE CAROUSEL — unchanged
+// PROMO CAROUSEL
 // ---------------------------------------------------------------------------
 class _PromoImageCarousel extends StatefulWidget {
   const _PromoImageCarousel();
@@ -1049,11 +1037,8 @@ class _PromoImageCarouselState extends State<_PromoImageCarousel> {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       final next = (_currentPage + 1) % _banners.length;
-      _pageController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
+      _pageController.animateToPage(next,
+          duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
     });
   }
 
@@ -1082,22 +1067,18 @@ class _PromoImageCarouselState extends State<_PromoImageCarousel> {
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.asset(
-                      banner['asset']!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (ctx, _, __) => Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.image_outlined,
-                          color: AppTheme.primaryGreen,
-                          size: 40,
-                        ),
-                      ),
-                    ),
+                    child: Image.asset(banner['asset']!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (ctx, _, __) => Container(
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryGreen
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(Icons.image_outlined,
+                                  color: AppTheme.primaryGreen, size: 40),
+                            )),
                   ),
                 ),
               );

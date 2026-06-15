@@ -1,5 +1,3 @@
-// lib/models/order.dart
-
 class Order {
   final String id;
   final String buyerId;

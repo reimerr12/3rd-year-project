@@ -74,7 +74,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   String _friendlyError(String raw) {
     if (raw.contains('network')) return 'ইন্টারনেট সংযোগ নেই';
-    return 'কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন';
+    return raw;
   }
 
   @override
@@ -97,20 +97,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.person_outline_rounded,
-                  color: AppTheme.primaryGreen,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
               const Text(
                 'আপনার নাম দিন',
                 style: TextStyle(

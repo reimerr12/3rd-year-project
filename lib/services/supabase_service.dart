@@ -273,6 +273,7 @@ class BookingModel {
     );
   }
 }
+
 //-----------
 // DOCTORS
 //-----------
@@ -326,8 +327,6 @@ class SupabaseService {
   SupabaseService._();
   static final SupabaseService instance = SupabaseService._();
 
-  // Factory constructor so callers can write SupabaseService() anywhere
-  // and always get the singleton without needing to know about .instance.
   factory SupabaseService() => instance;
 
   SupabaseClient get _client => Supabase.instance.client;
@@ -344,8 +343,6 @@ class SupabaseService {
   // AUTH
   // =========================================================================
 
-  // --- Phone OTP ---
-
   Future<void> requestPhoneOtp(String phone) async {
     await _client.auth.signInWithOtp(phone: phone);
   }
@@ -360,12 +357,10 @@ class SupabaseService {
     return _fetchProfileOrNull(res.user!);
   }
 
-  // --- Email OTP ---
-
   Future<void> requestEmailOtp(String email) async {
     await _client.auth.signInWithOtp(
       email: email,
-      shouldCreateUser: true, // creates account on first send
+      shouldCreateUser: true,
     );
   }
 
@@ -379,8 +374,6 @@ class SupabaseService {
     return _fetchProfileOrNull(res.user!);
   }
 
-  // --- Session ---
-
   Future<void> signOut() async {
     await _client.auth.signOut();
   }
@@ -391,8 +384,6 @@ class SupabaseService {
     return _fetchProfileOrNull(authUser);
   }
 
-  /// Emits AppUser? whenever auth state changes (sign-in, sign-out,
-  /// token refresh). auth_provider.dart listens to this.
   Stream<AppUser?> get authStateChanges {
     return _client.auth.onAuthStateChange.asyncMap((event) async {
       final user = event.session?.user;
@@ -412,23 +403,27 @@ class SupabaseService {
     String? division,
     String? district,
   }) async {
-    final authUser = _client.auth.currentUser;
+    User? authUser = _client.auth.currentUser;
     if (authUser == null) {
-      throw Exception('createProfile: no authenticated user');
+      for (int i = 0; i < 10; i++) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        authUser = _client.auth.currentUser;
+        if (authUser != null) break;
+      }
     }
+    if (authUser == null)
+      throw Exception('createProfile: no authenticated user');
 
     final data = await _client
         .from('profiles')
-        .upsert({
-          'id': authUser.id,
-          'email': authUser.email,
-          'phone': authUser.phone,
+        .update({
           'name': name,
           'role': role,
           'lang_pref': langPref,
-          'division': division,
-          'district': district,
+          if (division != null) 'division': division,
+          if (district != null) 'district': district,
         })
+        .eq('id', authUser.id)
         .select()
         .single();
 
@@ -443,9 +438,8 @@ class SupabaseService {
     String? avatarUrl,
   }) async {
     final authUser = _client.auth.currentUser;
-    if (authUser == null) {
+    if (authUser == null)
       throw Exception('updateProfile: no authenticated user');
-    }
 
     final updates = <String, dynamic>{};
     if (name != null) updates['name'] = name;
@@ -645,7 +639,7 @@ class SupabaseService {
     String? notes,
     String? paymentMethod,
     String? deliveryAddress,
-    String? transactionId, // ADD THIS
+    String? transactionId,
   }) async {
     final data = await _client
         .from('orders')
@@ -659,9 +653,9 @@ class SupabaseService {
           'notes': notes,
           'payment_method': paymentMethod,
           'delivery_address': deliveryAddress,
-          'transaction_id': transactionId, // ADD THIS
+          'transaction_id': transactionId,
           if (transactionId != null)
-            'paid_at': DateTime.now().toIso8601String(), // ADD THIS
+            'paid_at': DateTime.now().toIso8601String(),
         })
         .select()
         .single();
@@ -730,6 +724,17 @@ class SupabaseService {
         .update({'status': 'cancelled'})
         .eq('id', orderId)
         .eq('buyer_id', _uid);
+  }
+
+  /// Permanently deletes a cancelled order from the buyer's view.
+  /// Only works if the order belongs to the current user and is cancelled.
+  Future<void> deleteOrderAsBuyer({required String orderId}) async {
+    await _client
+        .from('orders')
+        .delete()
+        .eq('id', orderId)
+        .eq('buyer_id', _uid)
+        .eq('status', 'cancelled');
   }
 
   // =========================================================================
@@ -1034,9 +1039,9 @@ class SupabaseService {
         .eq('renter_id', _uid);
   }
 
-// ------------------------
-// DOCTOR
-// ------------------------
+  // =========================================================================
+  // DOCTOR
+  // =========================================================================
 
   Future<List<DoctorModel>> fetchDoctors({
     int from = 0,

@@ -73,6 +73,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                               order: filtered[i],
                               onCancel: () =>
                                   notifier.cancelOrder(filtered[i].id),
+                              onDismiss: filtered[i].status == 'cancelled'
+                                  ? () => notifier.removeOrder(filtered[i].id)
+                                  : null,
                               onReorder: () async {
                                 await notifier.reorder(filtered[i]);
                                 if (context.mounted) {
@@ -212,16 +215,18 @@ class _OrderCard extends StatelessWidget {
   final OrderEntry order;
   final VoidCallback onCancel;
   final VoidCallback onReorder;
+  final VoidCallback? onDismiss;
 
   const _OrderCard({
     required this.order,
     required this.onCancel,
     required this.onReorder,
+    this.onDismiss,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -252,10 +257,12 @@ class _OrderCard extends StatelessWidget {
                         color: order.statusColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 13)),
-                const Spacer(),
-                Text(_shortId(order.id),
-                    style:
-                        TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                if (onDismiss == null) ...[
+                  const Spacer(),
+                  Text(_shortId(order.id),
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                ],
               ],
             ),
           ),
@@ -281,7 +288,6 @@ class _OrderCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
 
-                // FIX: Expanded so the middle column takes remaining space
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,8 +308,6 @@ class _OrderCard extends StatelessWidget {
                             color: Colors.grey.shade600, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
-
-                      // FIX: payment + date row — each text wrapped in Flexible
                       Row(
                         children: [
                           Icon(Icons.payment_outlined,
@@ -321,7 +325,6 @@ class _OrderCard extends StatelessWidget {
                           Icon(Icons.calendar_today_outlined,
                               size: 12, color: Colors.grey.shade500),
                           const SizedBox(width: 3),
-                          // FIX: date is fixed-format so just needs no-shrink protection
                           Text(
                             '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
                             style: TextStyle(
@@ -371,6 +374,26 @@ class _OrderCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onDismiss != null) {
+      return Dismissible(
+        key: ValueKey(order.id),
+        direction: DismissDirection.endToStart,
+        onDismissed: (_) => onDismiss!(),
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          decoration: BoxDecoration(
+            color: Colors.red.shade100,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child:
+              Icon(Icons.delete_outline, color: Colors.red.shade400, size: 26),
+        ),
+        child: card,
+      );
+    }
+    return card;
   }
 
   void _confirmCancel(BuildContext context) {
@@ -421,9 +444,6 @@ class _OrderCard extends StatelessWidget {
       child: Column(
         children: [
           Divider(color: Colors.grey.shade100, height: 16),
-          // FIX: restructured so each step node is NOT double-wrapped in Expanded.
-          // Steps 0-2: Expanded(Row([node, Expanded(connector)]))
-          // Step 3 (last): just the node, no wrapping Expanded.
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: List.generate(steps.length, (i) {
@@ -469,12 +489,8 @@ class _OrderCard extends StatelessWidget {
                 ],
               );
 
-              // Last step: no connector after it
-              if (i == steps.length - 1) {
-                return stepNode;
-              }
+              if (i == steps.length - 1) return stepNode;
 
-              // All other steps: node + expanding connector line
               return Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

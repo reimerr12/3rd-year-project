@@ -1,14 +1,3 @@
-// lib/models/rental.dart
-//
-// NOTE: EquipmentModel and BookingModel are defined inline in
-// services/supabase_service.dart — do NOT duplicate them here.
-// This file holds rental-domain helpers and enums used across
-// rental screens and providers.
-
-// ---------------------------------------------------------------------------
-// Equipment type constants
-// ---------------------------------------------------------------------------
-
 enum EquipmentType {
   tractor('tractor', 'ট্র্যাক্টর', 'Tractor'),
   truck('truck', 'ট্রাক', 'Truck'),

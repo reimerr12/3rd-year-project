@@ -1,8 +1,3 @@
-// lib/models/crop_calendar.dart
-// Krishok App — CropCalendar model
-// Maps to the `crop_calendar` Supabase table
-// Handles ARRAY[1,2,3] type parsing from PostgreSQL
-
 import 'package:flutter/foundation.dart';
 
 // ─── Month helpers ───────────────────────────────────────────────────────────

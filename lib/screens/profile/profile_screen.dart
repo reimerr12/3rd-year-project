@@ -5,10 +5,12 @@ import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/marketplace_provider.dart';
+import '../../providers/lang_provider.dart';
 import '../../models/product.dart';
 import '../../services/supabase_service.dart';
 
-// ── Profile Screen ─────────────────────────────────────────────
+String _t(bool bn, String bangla, String english) => bn ? bangla : english;
+
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -20,6 +22,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   static const int _currentTabIndex = 3;
   List<Product> _myListings = [];
   int _soldCount = 0;
+  final Set<String> _dismissedOrderIds = {};
 
   @override
   void initState() {
@@ -47,25 +50,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         Navigator.pushReplacementNamed(context, AppRouter.market);
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, AppRouter.notifications);
+        Navigator.pushReplacementNamed(context, AppRouter.services);
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
+
     final user = ref.watch(currentUserProvider);
     final name = user?.name ?? 'কৃষক';
     final phone = user?.phone ?? '';
     final email = user?.email ?? '';
     final division = user?.division ?? '';
-    final role = user?.role ?? 'farmer';
     final avatarUrl = user?.avatarUrl ?? '';
 
     final marketState = ref.watch(marketplaceProvider);
     final notifier = ref.read(marketplaceProvider.notifier);
-    final totalOrders = marketState.orders.length;
-    final activeOrders = marketState.orders
+    final visibleOrders = marketState.orders
+        .where((o) => !_dismissedOrderIds.contains(o.id))
+        .toList();
+    final totalOrders =
+        visibleOrders.where((o) => o.status != 'cancelled').length;
+    final activeOrders = visibleOrders
         .where((o) => o.status != 'delivered' && o.status != 'cancelled')
         .length;
 
@@ -76,23 +84,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _buildSliverHeader(
             name: name,
             division: division,
-            role: role,
             avatarUrl: avatarUrl,
+            bn: bn,
           ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildStatsRow(totalOrders, activeOrders, _myListings.length),
+                  _buildStatsRow(
+                      totalOrders, activeOrders, _myListings.length, bn),
                   const SizedBox(height: 20),
                   _buildMenuSection(
-                    title: 'কেনাকাটা',
+                    title: bn ? 'কেনাকাটা' : 'Shopping',
                     items: [
                       _MenuItem(
                         icon: Icons.receipt_long_outlined,
                         iconColor: const Color(0xFF3B82F6),
-                        label: 'আমার অর্ডার',
+                        label: bn ? 'আমার অর্ডার' : 'My Orders',
                         trailing:
                             activeOrders > 0 ? _Badge('$activeOrders') : null,
                         onTap: () =>
@@ -101,7 +110,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       _MenuItem(
                         icon: Icons.shopping_cart_outlined,
                         iconColor: const Color(0xFFF59E0B),
-                        label: 'কার্ট',
+                        label: bn ? 'কার্ট' : 'Cart',
                         trailing: notifier.cartCount > 0
                             ? _Badge('${notifier.cartCount}')
                             : null,
@@ -112,22 +121,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const SizedBox(height: 14),
                   _buildMenuSection(
-                    title: 'বিক্রয়',
+                    title: bn ? 'বিক্রয়' : 'Sales',
                     items: [
                       _MenuItem(
                         icon: Icons.storefront_outlined,
                         iconColor: AppTheme.primaryGreen,
-                        label: 'আমার পণ্য তালিকা',
+                        label: bn ? 'আমার পণ্য তালিকা' : 'My Listings',
                         sublabel: _myListings.isEmpty
-                            ? 'কোনো পণ্য নেই'
-                            : '${_myListings.length}টি পণ্য · $_soldCount টি বিক্রিত',
-                        onTap: () =>
-                            _showMyListings(context, _myListings, _soldCount),
+                            ? (bn ? 'কোনো পণ্য নেই' : 'No products')
+                            : '${_myListings.length}${bn ? 'টি পণ্য' : ' products'} · $_soldCount ${bn ? 'টি বিক্রিত' : 'sold'}',
+                        onTap: () => _showMyListings(
+                            context, _myListings, _soldCount, bn),
                       ),
                       _MenuItem(
                         icon: Icons.add_box_outlined,
                         iconColor: const Color(0xFF8B5CF6),
-                        label: 'নতুন পণ্য যোগ করুন',
+                        label: bn ? 'নতুন পণ্য যোগ করুন' : 'Add New Product',
                         onTap: () =>
                             Navigator.pushNamed(context, AppRouter.sellProduct),
                       ),
@@ -135,18 +144,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const SizedBox(height: 14),
                   _buildMenuSection(
-                    title: 'প্রোফাইল',
+                    title: bn ? 'প্রোফাইল' : 'Profile',
                     items: [
                       _MenuItem(
                         icon: Icons.person_outline_rounded,
                         iconColor: const Color(0xFF06B6D4),
-                        label: 'প্রোফাইল সম্পাদনা',
+                        label: bn ? 'প্রোফাইল সম্পাদনা' : 'Edit Profile',
                         onTap: () => _showEditProfile(
                           context,
                           name: name,
                           phone: phone,
                           email: email,
                           division: division,
+                          bn: bn,
                         ),
                       ),
                     ],
@@ -158,9 +168,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       _MenuItem(
                         icon: Icons.logout_rounded,
                         iconColor: const Color(0xFFEF4444),
-                        label: 'লগআউট',
+                        label: bn ? 'লগআউট' : 'Logout',
                         labelColor: const Color(0xFFEF4444),
-                        onTap: () => _confirmLogout(context),
+                        onTap: () => _confirmLogout(context, bn),
                       ),
                     ],
                   ),
@@ -171,16 +181,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(bn),
     );
   }
 
-  // ── Sliver header ────────────────────────────────────────────
   Widget _buildSliverHeader({
     required String name,
     required String division,
-    required String role,
     required String avatarUrl,
+    required bool bn,
   }) {
     return SliverAppBar(
       expandedHeight: 220,
@@ -220,9 +229,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(5),
                         decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
+                            color: Colors.white, shape: BoxShape.circle),
                         child: const Icon(Icons.camera_alt,
                             size: 14, color: AppTheme.primaryGreen),
                       ),
@@ -230,61 +237,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // FIX: name could be long — constrain width + ellipsis
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
+                  child: Text(name,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center),
                 ),
                 const SizedBox(height: 4),
-                // FIX: wrap in flexible row so long division names don't overflow
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (division.isNotEmpty) ...[
+                if (division.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         const Icon(Icons.location_on,
                             color: Colors.white70, size: 14),
                         const SizedBox(width: 3),
                         Flexible(
-                          child: Text(
-                            division,
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 13),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          child: Text(division,
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 13),
+                              overflow: TextOverflow.ellipsis),
                         ),
-                        const SizedBox(width: 12),
                       ],
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          role == 'farmer' ? 'কৃষক' : 'ক্রেতা',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -293,29 +276,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // ── Stats row ────────────────────────────────────────────────
-  Widget _buildStatsRow(int totalOrders, int activeOrders, int listings) {
-    // FIX: use IntrinsicHeight so all cards match the tallest one, preventing
-    // bottom overflow when a label wraps to two lines on small screens.
+  Widget _buildStatsRow(
+      int totalOrders, int activeOrders, int listings, bool bn) {
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _StatCard(
               value: '$totalOrders',
-              label: 'মোট অর্ডার',
+              label: bn ? 'মোট অর্ডার' : 'Total Orders',
               icon: Icons.receipt_long_outlined,
               color: const Color(0xFF3B82F6)),
           const SizedBox(width: 10),
           _StatCard(
               value: '$activeOrders',
-              label: 'চলমান',
+              label: bn ? 'চলমান' : 'Active',
               icon: Icons.local_shipping_outlined,
               color: const Color(0xFFF59E0B)),
           const SizedBox(width: 10),
           _StatCard(
               value: '$listings',
-              label: 'আমার পণ্য',
+              label: bn ? 'আমার পণ্য' : 'My Products',
               icon: Icons.storefront_outlined,
               color: AppTheme.primaryGreen),
         ],
@@ -323,7 +304,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // ── Menu section ─────────────────────────────────────────────
   Widget _buildMenuSection(
       {required String title, required List<_MenuItem> items}) {
     return Container(
@@ -332,10 +312,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -344,14 +323,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (title.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-              child: Text(
-                title,
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade500,
-                    letterSpacing: 0.5),
-              ),
+              child: Text(title,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 0.5)),
             ),
           ...items.asMap().entries.map((e) {
             final isLast = e.key == items.length - 1;
@@ -380,9 +357,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: item.iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
+                  color: item.iconColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10)),
               child: Icon(item.icon, color: item.iconColor, size: 18),
             ),
             const SizedBox(width: 12),
@@ -390,20 +366,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: item.labelColor ?? const Color(0xFF1A1A1A),
-                    ),
-                  ),
+                  Text(item.label,
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: item.labelColor ?? const Color(0xFF1A1A1A))),
                   if (item.sublabel != null)
-                    Text(
-                      item.sublabel!,
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                    ),
+                    Text(item.sublabel!,
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade500)),
                 ],
               ),
             ),
@@ -416,9 +387,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // ── My listings bottom sheet ──────────────────────────────────
   void _showMyListings(
-      BuildContext context, List<dynamic> listings, int soldCount) {
+      BuildContext context, List<dynamic> listings, int soldCount, bool bn) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -429,9 +399,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         minChildSize: 0.4,
         builder: (_, controller) => Container(
           decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
           child: Column(
             children: [
               const SizedBox(height: 12),
@@ -439,29 +408,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2)),
               ),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'আমার পণ্য তালিকা',
-                      style:
-                          TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                    ),
+                    Text(bn ? 'আমার পণ্য তালিকা' : 'My Listings',
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.bold)),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                          color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10)),
                       child: Text(
-                        '$soldCount টি বিক্রিত',
+                        '$soldCount ${bn ? "টি বিক্রিত" : "sold"}',
                         style: const TextStyle(
                             color: AppTheme.primaryGreen,
                             fontSize: 12,
@@ -481,9 +446,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             Icon(Icons.storefront_outlined,
                                 size: 56, color: Colors.grey.shade300),
                             const SizedBox(height: 12),
-                            Text('এখনো কোনো পণ্য যোগ করেননি',
-                                style: TextStyle(
-                                    color: Colors.grey.shade500, fontSize: 15)),
+                            Text(
+                              bn
+                                  ? 'এখনো কোনো পণ্য যোগ করেননি'
+                                  : 'No products listed yet',
+                              style: TextStyle(
+                                  color: Colors.grey.shade500, fontSize: 15),
+                            ),
                             const SizedBox(height: 16),
                             ElevatedButton(
                               onPressed: () {
@@ -497,7 +466,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: const Text('পণ্য যোগ করুন'),
+                              child: Text(bn ? 'পণ্য যোগ করুন' : 'Add Product'),
                             ),
                           ],
                         ),
@@ -521,41 +490,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
                                   child: p.primaryImage != null
-                                      ? Image.network(
-                                          p.primaryImage!,
+                                      ? Image.network(p.primaryImage!,
                                           width: 56,
                                           height: 56,
                                           fit: BoxFit.cover,
                                           errorBuilder: (_, __, ___) =>
-                                              _imgPlaceholder(),
-                                        )
+                                              _imgPlaceholder())
                                       : _imgPlaceholder(),
                                 ),
                                 const SizedBox(width: 12),
-                                // FIX: Expanded so middle column doesn't push status badge off-screen
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
+                                      Text(p.title,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis),
                                       Text(
-                                        p.title,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      // FIX: price + unit in one Text to avoid Row overflow
+                                          '৳${p.price.toStringAsFixed(0)} / ${p.unit}',
+                                          style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12),
+                                          overflow: TextOverflow.ellipsis),
                                       Text(
-                                        '৳${p.price.toStringAsFixed(0)} / ${p.unit}',
-                                        style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 12),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      Text(
-                                        'স্টক: ${p.stock} ${p.unit}',
+                                        '${bn ? "স্টক" : "Stock"}: ${p.stock} ${p.unit}',
                                         style: TextStyle(
                                             color: p.stock > 0
                                                 ? AppTheme.primaryGreen
@@ -568,7 +530,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                // Status badge — fixed width so it never wraps
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 4),
@@ -580,7 +541,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    p.isActive ? 'সক্রিয়' : 'বন্ধ',
+                                    p.isActive
+                                        ? (bn ? 'সক্রিয়' : 'Active')
+                                        : (bn ? 'বন্ধ' : 'Inactive'),
                                     style: TextStyle(
                                         fontSize: 11,
                                         color: p.isActive
@@ -609,13 +572,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: const Icon(Icons.image_outlined, color: Colors.grey),
       );
 
-  // ── Edit profile bottom sheet ─────────────────────────────────
   void _showEditProfile(
     BuildContext context, {
     required String name,
     required String phone,
     required String email,
     required String division,
+    required bool bn,
   }) {
     final nameCtrl = TextEditingController(text: name);
     String selectedDivision = division.isNotEmpty ? division : 'ঢাকা';
@@ -638,14 +601,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -654,53 +615,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('প্রোফাইল সম্পাদনা',
-                        style: TextStyle(
+                    Text(bn ? 'প্রোফাইল সম্পাদনা' : 'Edit Profile',
+                        style: const TextStyle(
                             fontSize: 17, fontWeight: FontWeight.bold)),
                     IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx)),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _sheetField(nameCtrl, 'নাম', Icons.person_outline),
-                const SizedBox(height: 12),
                 _sheetField(
-                  TextEditingController(text: phone),
-                  'ফোন নম্বর',
-                  Icons.phone_outlined,
-                  readOnly: true,
-                ),
+                    nameCtrl, bn ? 'নাম' : 'Name', Icons.person_outline),
                 const SizedBox(height: 12),
-                _sheetField(
-                  TextEditingController(text: email),
-                  'ইমেইল',
-                  Icons.email_outlined,
-                  readOnly: true,
-                ),
+                _sheetField(TextEditingController(text: phone),
+                    bn ? 'ফোন নম্বর' : 'Phone', Icons.phone_outlined,
+                    readOnly: true),
+                const SizedBox(height: 12),
+                _sheetField(TextEditingController(text: email),
+                    bn ? 'ইমেইল' : 'Email', Icons.email_outlined,
+                    readOnly: true),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedDivision,
                   decoration: InputDecoration(
-                    labelText: 'বিভাগ',
+                    labelText: bn ? 'বিভাগ' : 'Division',
                     prefixIcon: const Icon(Icons.location_on_outlined,
                         color: AppTheme.primaryGreen),
                     filled: true,
                     fillColor: const Color(0xFFF8FAF8),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade200)),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey.shade200),
-                    ),
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.grey.shade200)),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                          color: AppTheme.primaryGreen, width: 1.5),
-                    ),
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(
+                            color: AppTheme.primaryGreen, width: 1.5)),
                   ),
                   items: divisions
                       .map((d) => DropdownMenuItem(value: d, child: Text(d)))
@@ -728,22 +680,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               );
                               await ref.read(authProvider.notifier).refresh();
                               nav.pop();
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text('প্রোফাইল আপডেট হয়েছে'),
-                                  backgroundColor: AppTheme.primaryGreen,
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
+                              messenger.showSnackBar(SnackBar(
+                                content: Text(bn
+                                    ? 'প্রোফাইল আপডেট হয়েছে'
+                                    : 'Profile updated'),
+                                backgroundColor: AppTheme.primaryGreen,
+                                behavior: SnackBarBehavior.floating,
+                              ));
                             } catch (e) {
                               setSheetState(() => isSaving = false);
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text('আপডেট ব্যর্থ হয়েছে: $e'),
-                                  backgroundColor: Colors.red,
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
+                              messenger.showSnackBar(SnackBar(
+                                content: Text(
+                                    '${bn ? "আপডেট ব্যর্থ" : "Update failed"}: $e'),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ));
                             }
                           },
                     style: ElevatedButton.styleFrom(
@@ -759,10 +710,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2.5),
-                          )
-                        : const Text('সংরক্ষণ করুন',
-                            style: TextStyle(
+                                color: Colors.white, strokeWidth: 2.5))
+                        : Text(bn ? 'সংরক্ষণ করুন' : 'Save',
+                            style: const TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.bold)),
                   ),
                 ),
@@ -775,20 +725,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _sheetField(
-    TextEditingController ctrl,
-    String label,
-    IconData icon, {
-    TextInputType keyboardType = TextInputType.text,
-    bool readOnly = false,
-  }) {
+  Widget _sheetField(TextEditingController ctrl, String label, IconData icon,
+      {TextInputType keyboardType = TextInputType.text,
+      bool readOnly = false}) {
     return TextField(
       controller: ctrl,
       keyboardType: keyboardType,
       readOnly: readOnly,
-      style: TextStyle(
-        color: readOnly ? Colors.grey.shade500 : Colors.black87,
-      ),
+      style: TextStyle(color: readOnly ? Colors.grey.shade500 : Colors.black87),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppTheme.primaryGreen, size: 20),
@@ -797,46 +741,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey.shade200)),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey.shade200)),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: readOnly ? Colors.grey.shade200 : AppTheme.primaryGreen,
-            width: readOnly ? 1 : 1.5,
-          ),
-        ),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(
+                color: readOnly ? Colors.grey.shade200 : AppTheme.primaryGreen,
+                width: readOnly ? 1 : 1.5)),
       ),
     );
   }
 
-  void _confirmLogout(BuildContext context) {
+  void _confirmLogout(BuildContext context, bool bn) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('লগআউট করবেন?',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('আপনি কি সত্যিই লগআউট করতে চান?'),
+        title: Text(bn ? 'লগআউট করবেন?' : 'Log out?',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(bn
+            ? 'আপনি কি সত্যিই লগআউট করতে চান?'
+            : 'Are you sure you want to log out?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('না', style: TextStyle(color: Colors.grey.shade600)),
+            child: Text(bn ? 'না' : 'Cancel',
+                style: TextStyle(color: Colors.grey.shade600)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               ref.read(authProvider.notifier).signOut();
               Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRouter.login,
-                (route) => false,
-              );
+                  context, AppRouter.login, (route) => false);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
@@ -844,35 +784,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('হ্যাঁ, লগআউট'),
+            child: Text(bn ? 'হ্যাঁ, লগআউট' : 'Yes, Log Out'),
           ),
         ],
       ),
     );
   }
 
-  // ── Bottom nav ───────────────────────────────────────────────
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(bool bn) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, -4)),
         ],
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
         child: BottomNavigationBar(
           currentIndex: _currentTabIndex,
           onTap: _onTabTapped,
@@ -884,15 +818,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           unselectedLabelStyle: const TextStyle(fontSize: 10),
           backgroundColor: Colors.white,
           elevation: 0,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined), label: 'হোম'),
+                icon: const Icon(Icons.home_outlined),
+                label: _t(bn, 'হোম', 'Home')),
             BottomNavigationBarItem(
-                icon: Icon(Icons.store_outlined), label: 'বাজার'),
+                icon: const Icon(Icons.store_outlined),
+                label: _t(bn, 'বাজার', 'Market')),
             BottomNavigationBarItem(
-                icon: Icon(Icons.notifications_outlined), label: 'বার্তা'),
+                icon: const Icon(Icons.miscellaneous_services_outlined),
+                label: _t(bn, 'সেবা', 'Services')),
             BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline), label: 'প্রোফাইল'),
+                icon: const Icon(Icons.person_outline),
+                label: _t(bn, 'প্রোফাইল', 'Profile')),
           ],
         ),
       ),
@@ -900,19 +838,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-// ── Helper widgets ─────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
   final String value;
   final String label;
   final IconData icon;
   final Color color;
-
-  const _StatCard({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.color,
-  });
+  const _StatCard(
+      {required this.value,
+      required this.label,
+      required this.icon,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -924,40 +859,32 @@ class _StatCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
           ],
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min, // FIX: don't over-expand
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10)),
               child: Icon(icon, color: color, size: 18),
             ),
             const SizedBox(height: 8),
-            // FIX: value text can be wide on large numbers — ellipsis guard
-            Text(
-              value,
-              style: TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.bold, color: color),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            // FIX: label allowed to wrap to 2 lines instead of overflowing
-            Text(
-              label,
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.bold, color: color),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+            Text(label,
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
@@ -974,9 +901,8 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFEF4444),
-        borderRadius: BorderRadius.circular(10),
-      ),
+          color: const Color(0xFFEF4444),
+          borderRadius: BorderRadius.circular(10)),
       child: Text(text,
           style: const TextStyle(
               color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),

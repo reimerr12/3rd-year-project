@@ -80,7 +80,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _errorMessage = null;
     });
 
-    // Capture nav before any await gap
     final nav = Navigator.of(context);
 
     try {
@@ -95,8 +94,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
       if (!mounted) return;
 
-      // Refresh auth provider immediately after OTP verification
-      // so home_screen gets the real user without needing a hot restart.
       await ref.read(authProvider.notifier).refresh();
 
       if (!mounted) return;
@@ -214,23 +211,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  _isEmail
-                      ? Icons.mark_email_read_outlined
-                      : Icons.sms_outlined,
-                  color: AppTheme.primaryGreen,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
 
               const Text(
                 'OTP যাচাই করুন',

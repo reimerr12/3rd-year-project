@@ -6,6 +6,95 @@ import '../../core/theme.dart';
 import '../../models/product.dart';
 import '../../providers/marketplace_provider.dart';
 
+void _showAddedToCartSnackBar(BuildContext context, Product product) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.white, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${product.title} কার্টে যোগ হয়েছে',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: AppTheme.primaryGreen,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    ),
+  );
+}
+
+// ── Category Chip ──────────────────────────────────────────────
+class _CategoryChip extends StatefulWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_CategoryChip> createState() => _CategoryChipState();
+}
+
+class _CategoryChipState extends State<_CategoryChip> {
+  bool _pressing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final pressing = _pressing;
+    final selected = widget.isSelected;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressing = true),
+      onTapUp: (_) {
+        setState(() => _pressing = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _pressing = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: pressing
+              ? Colors.white
+              : selected
+                  ? AppTheme.primaryGreen
+                  : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: (pressing || selected)
+                ? AppTheme.primaryGreen
+                : Colors.grey.shade300,
+          ),
+        ),
+        child: Text(
+          widget.label,
+          style: TextStyle(
+            color: pressing
+                ? AppTheme.primaryGreen
+                : selected
+                    ? Colors.white
+                    : Colors.grey.shade700,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class MarketScreen extends ConsumerStatefulWidget {
   const MarketScreen({super.key});
 
@@ -192,30 +281,10 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final (key, label) = _categories[i];
-          final isSelected = selected == key;
-          return GestureDetector(
+          return _CategoryChip(
+            label: label,
+            isSelected: selected == key,
             onTap: () => notifier.setCategory(key),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                color:
-                    isSelected ? AppTheme.primaryGreen : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color:
-                      isSelected ? AppTheme.primaryGreen : Colors.grey.shade300,
-                ),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.grey.shade700,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: 13,
-                ),
-              ),
-            ),
           );
         },
       ),
@@ -228,15 +297,17 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio:
-            0.68, // FIX: was 0.72 — extra height prevents bottom overflow
+        childAspectRatio: 0.68,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
       itemCount: products.length,
       itemBuilder: (_, i) => _ProductCard(
         product: products[i],
-        onAddToCart: () => notifier.addToCart(products[i]),
+        onAddToCart: () {
+          notifier.addToCart(products[i]);
+          _showAddedToCartSnackBar(context, products[i]);
+        },
         onTap: () => Navigator.pushNamed(
           context,
           AppRouter.productDetail,
@@ -336,7 +407,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 }
 
 // ── Product Card ───────────────────────────────────────────────
-class _ProductCard extends StatelessWidget {
+class _ProductCard extends StatefulWidget {
   final Product product;
   final VoidCallback onAddToCart;
   final VoidCallback onTap;
@@ -348,9 +419,18 @@ class _ProductCard extends StatelessWidget {
   });
 
   @override
+  State<_ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<_ProductCard> {
+  bool _pressing = false;
+
+  @override
   Widget build(BuildContext context) {
+    final product = widget.product;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -440,14 +520,12 @@ class _ProductCard extends StatelessWidget {
                 ),
               ),
             ),
-            // FIX: use Expanded with mainAxisSize.min + no bare Spacer fighting constrained height
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize:
-                      MainAxisSize.min, // FIX: don't over-expand column
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -473,7 +551,6 @@ class _ProductCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // FIX: Flexible prevents price column from overflowing right
                         Flexible(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,23 +573,47 @@ class _ProductCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(
-                            width: 4), // FIX: small gap so button never clips
+                        const SizedBox(width: 4),
+                        // ── Press-animated add button ──
                         GestureDetector(
-                          onTap: product.inStock ? onAddToCart : null,
-                          child: Container(
+                          onTapDown: product.inStock
+                              ? (_) => setState(() => _pressing = true)
+                              : null,
+                          onTapUp: product.inStock
+                              ? (_) {
+                                  setState(() => _pressing = false);
+                                  widget.onAddToCart();
+                                }
+                              : null,
+                          onTapCancel: product.inStock
+                              ? () => setState(() => _pressing = false)
+                              : null,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 120),
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: product.inStock
-                                  ? AppTheme.primaryGreen
-                                  : Colors.grey.shade300,
+                              color: !product.inStock
+                                  ? Colors.grey.shade300
+                                  : _pressing
+                                      ? Colors.white
+                                      : AppTheme.primaryGreen,
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: !product.inStock
+                                    ? Colors.grey.shade300
+                                    : AppTheme.primaryGreen,
+                                width: 1.5,
+                              ),
                             ),
-                            child: Icon(Icons.add,
-                                color: product.inStock
-                                    ? Colors.white
-                                    : Colors.grey.shade500,
-                                size: 16),
+                            child: Icon(
+                              Icons.add,
+                              color: !product.inStock
+                                  ? Colors.grey.shade500
+                                  : _pressing
+                                      ? AppTheme.primaryGreen
+                                      : Colors.white,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ],

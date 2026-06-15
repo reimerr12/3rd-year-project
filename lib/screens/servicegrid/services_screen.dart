@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../providers/lang_provider.dart';
 
-class ServicesScreen extends StatefulWidget {
+class ServicesScreen extends ConsumerStatefulWidget {
   const ServicesScreen({super.key});
 
   @override
-  State<ServicesScreen> createState() => _ServicesScreenState();
+  ConsumerState<ServicesScreen> createState() => _ServicesScreenState();
 }
 
-class _ServicesScreenState extends State<ServicesScreen> {
-  int _currentTabIndex = 2; // সেবা tab is active
+class _ServicesScreenState extends ConsumerState<ServicesScreen> {
+  int _currentTabIndex = 2;
 
   void _onTabTapped(int index) {
     switch (index) {
@@ -22,7 +24,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
         Navigator.pushNamed(context, AppRouter.market);
         break;
       case 2:
-        break; // already here
+        break;
       case 3:
         Navigator.pushNamed(context, AppRouter.profile);
         break;
@@ -92,16 +94,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
       bgColor: Color(0xFFFCE4EC),
     ),
     _ServiceItem(
-      icon: Icons.location_on_outlined,
-      labelBn: 'নিকটস্থ নার্সারি',
-      labelEn: 'Nearby Nurseries',
-      descBn: 'কাছের দোকান খুঁজুন',
-      descEn: 'Find nearby stores',
-      route: AppRouter.nearby,
-      color: Color(0xFF795548),
-      bgColor: Color(0xFFEFEBE9),
-    ),
-    _ServiceItem(
       icon: Icons.landscape_outlined,
       labelBn: 'মাটির গুণমান',
       labelEn: 'Soil Quality',
@@ -125,6 +117,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
+
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
       appBar: AppBar(
@@ -132,9 +126,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text(
-          'সেবাসমূহ',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+        title: Text(
+          bn ? 'সেবাসমূহ' : 'Services',
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
         ),
       ),
       body: GridView.builder(
@@ -147,35 +141,29 @@ class _ServicesScreenState extends State<ServicesScreen> {
         ),
         itemCount: _services.length,
         itemBuilder: (context, index) {
-          final svc = _services[index];
-          return _ServiceCard(item: svc);
+          return _ServiceCard(item: _services[index], bn: bn);
         },
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(bn),
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(bool bn) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, -4)),
         ],
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
         child: BottomNavigationBar(
           currentIndex: _currentTabIndex,
           onTap: _onTabTapped,
@@ -187,16 +175,19 @@ class _ServicesScreenState extends State<ServicesScreen> {
           unselectedLabelStyle: const TextStyle(fontSize: 10),
           backgroundColor: Colors.white,
           elevation: 0,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined), label: 'হোম'),
+                icon: const Icon(Icons.home_outlined),
+                label: bn ? 'হোম' : 'Home'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.store_outlined), label: 'বাজার'),
+                icon: const Icon(Icons.store_outlined),
+                label: bn ? 'বাজার' : 'Market'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.miscellaneous_services_outlined),
-                label: 'সেবা'),
+                icon: const Icon(Icons.miscellaneous_services_outlined),
+                label: bn ? 'সেবা' : 'Services'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline), label: 'প্রোফাইল'),
+                icon: const Icon(Icons.person_outline),
+                label: bn ? 'প্রোফাইল' : 'Profile'),
           ],
         ),
       ),
@@ -204,13 +195,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Service card
-// ---------------------------------------------------------------------------
-
 class _ServiceCard extends StatelessWidget {
   final _ServiceItem item;
-  const _ServiceCard({required this.item});
+  final bool bn;
+  const _ServiceCard({required this.item, required this.bn});
 
   @override
   Widget build(BuildContext context) {
@@ -222,10 +210,9 @@ class _ServiceCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 3)),
           ],
         ),
         padding: const EdgeInsets.all(16),
@@ -237,32 +224,26 @@ class _ServiceCard extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: item.bgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  color: item.bgColor, borderRadius: BorderRadius.circular(12)),
               child: Icon(item.icon, color: item.color, size: 24),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.labelBn,
+                  bn ? item.labelBn : item.labelEn,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A1A)),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  item.descBn,
+                  bn ? item.descBn : item.descEn,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade500,
-                    height: 1.3,
-                  ),
+                      fontSize: 11, color: Colors.grey.shade500, height: 1.3),
                 ),
               ],
             ),
@@ -272,10 +253,6 @@ class _ServiceCard extends StatelessWidget {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Data class
-// ---------------------------------------------------------------------------
 
 class _ServiceItem {
   final IconData icon;

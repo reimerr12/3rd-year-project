@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
-/* import 'package:firebase_core/firebase_core.dart'; */
 import 'core/constants.dart';
 import 'core/router.dart';
 import 'providers/auth_provider.dart';

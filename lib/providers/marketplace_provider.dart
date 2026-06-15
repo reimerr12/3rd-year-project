@@ -5,7 +5,7 @@ import '../services/supabase_service.dart';
 
 // ── Cart item ──────────────────────────────────────────────────
 class CartItem {
-  final String cartItemId; // Supabase cart_items.id
+  final String cartItemId;
   final Product product;
   final int quantity;
   const CartItem({
@@ -199,21 +199,18 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
   Future<void> addToCart(Product product) async {
     if (!product.inStock) return;
 
-    // Optimistic update
     final idx = state.cart.indexWhere((e) => e.product.id == product.id);
     if (idx >= 0) {
       final updated = [...state.cart];
       updated[idx] = updated[idx].copyWith(quantity: updated[idx].quantity + 1);
       state = state.copyWith(cart: updated);
     } else {
-      // Use empty string for cartItemId until Supabase responds
       state = state.copyWith(cart: [
         ...state.cart,
         CartItem(cartItemId: '', product: product, quantity: 1),
       ]);
     }
 
-    // Persist to Supabase then reload to get real cartItemId
     try {
       await _service.addToCart(productId: product.id, quantity: 1);
       await loadCart();
@@ -228,7 +225,6 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     final item = matches.first;
     if (item.cartItemId.isEmpty) return;
 
-    // Optimistic update
     state = state.copyWith(
       cart: state.cart.where((e) => e.product.id != productId).toList(),
     );
@@ -245,7 +241,6 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     final current = state.cart[idx];
     final newQty = (current.quantity + delta).clamp(1, 9999);
 
-    // Optimistic update
     final updated = [...state.cart];
     updated[idx] = current.copyWith(quantity: newQty);
     state = state.copyWith(cart: updated);
@@ -273,24 +268,18 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
   Future<void> loadOrders() async {
     state = state.copyWith(isOrdersLoading: true);
     try {
-      // fetchMyOrders returns OrderModel list (no nested product).
-      // We build a product map from current state.products for matching,
-      // then fetch any missing products individually.
       final raw = await _service.fetchMyOrders();
       final productMap = {for (final p in state.products) p.id: p};
 
       final orders = <OrderEntry>[];
       for (final o in raw) {
-        // Try to find product in already-loaded list
         var product = productMap[o.productId];
 
-        // If not found (e.g. different category loaded), fetch from Supabase
         if (product == null) {
           try {
             final pm = await _service.fetchProductById(o.productId);
             product = _productFromModel(pm);
           } catch (_) {
-            // Product deleted — create a placeholder
             product = Product(
               id: o.productId,
               sellerId: o.sellerId,
@@ -323,8 +312,6 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     }
   }
 
-  // placeOrdersFromCart() in SupabaseService handles payment/address
-  // via placeOrder() per item. We pass them through our own loop.
   Future<List<OrderEntry>> placeOrders({
     required String paymentMethod,
     required String deliveryAddress,
@@ -357,7 +344,6 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
       ));
     }
 
-    // Clear cart in Supabase
     await _service.clearCart();
 
     state = state.copyWith(
@@ -365,26 +351,34 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
       cart: [],
     );
 
-    // Reload products to reflect updated stock
     await loadProducts(category: state.selectedCategory);
     return placed;
   }
 
   Future<void> cancelOrder(String orderId) async {
-    // Optimistic update
     final updated = state.orders
         .map((o) => o.id == orderId ? o.copyWith(status: 'cancelled') : o)
         .toList();
     state = state.copyWith(orders: updated);
     try {
-      // updateOrderStatus filters by seller_id, which won't work for buyers.
-      // We use placeOrder's sister method via direct Supabase update on buyer_id.
-      // SupabaseService doesn't expose a buyer-side cancel, so we call the
-      // underlying client through the service's public client getter.
       final uid = _service.currentUid;
       if (uid == null) return;
       await _service.cancelOrderAsBuyer(orderId: orderId);
     } catch (_) {
+      await loadOrders();
+    }
+  }
+
+  /// Permanently removes a cancelled order from Supabase and local state.
+  Future<void> removeOrder(String orderId) async {
+    // Optimistic: remove from local state immediately so UI updates instantly
+    state = state.copyWith(
+      orders: state.orders.where((o) => o.id != orderId).toList(),
+    );
+    try {
+      await _service.deleteOrderAsBuyer(orderId: orderId);
+    } catch (_) {
+      // If delete fails, reload to restore accurate state
       await loadOrders();
     }
   }
@@ -394,8 +388,6 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
   }
 
   // ── Sell: add new product ──────────────────────────────────
-  // division is stored in the product model but createProduct in
-  // SupabaseService doesn't accept it — we update separately after insert.
   Future<void> addProduct({
     required String title,
     String? description,

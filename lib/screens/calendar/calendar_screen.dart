@@ -1,12 +1,7 @@
-// lib/screens/calendar/calendar_screen.dart
-// Krishok App — Agricultural Seasonal Calendar
-// LIVE SUPABASE INTEGRATION ✅
-// UI: stripped app bar (back button only), no percentages, no yellow, bottom nav
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import '../../providers/lang_provider.dart';
 import '../../core/theme.dart';
 import '../../models/crop_calendar.dart';
 import '../../providers/calendar_provider.dart';
@@ -179,7 +174,7 @@ class _BanglaHelper {
     'Thursday',
     'Friday',
     'Saturday',
-    'Sunday',
+    'Sunday'
   ];
   static const _bnDayNames = [
     'সোমবার',
@@ -188,7 +183,7 @@ class _BanglaHelper {
     'বৃহস্পতিবার',
     'শুক্রবার',
     'শনিবার',
-    'রবিবার',
+    'রবিবার'
   ];
   static String dayEn(int weekday) => _enDayNames[weekday - 1];
   static String dayBn(int weekday) => _bnDayNames[weekday - 1];
@@ -202,9 +197,8 @@ enum _Status { peak, harvest, cultivation, offSeason }
 
 extension _CropStatus on CropCalendar {
   _Status statusFor(int month) {
-    if (sowMonths.contains(month) && harvestMonths.contains(month)) {
+    if (sowMonths.contains(month) && harvestMonths.contains(month))
       return _Status.peak;
-    }
     if (harvestMonths.contains(month)) return _Status.harvest;
     if (sowMonths.contains(month)) return _Status.cultivation;
     return _Status.offSeason;
@@ -255,8 +249,6 @@ class CalendarScreen extends ConsumerStatefulWidget {
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen>
     with TickerProviderStateMixin {
-  // Calendar isn't a main tab — no tab is "active" in home/market/services/profile
-  // We keep index 0 highlighted as Home since user came from there
   int _currentTabIndex = 0;
 
   late AnimationController _slideCtrl;
@@ -272,11 +264,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     _fadeCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 260));
 
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(1, 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic));
-
+    _slideAnim = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+        .animate(
+            CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic));
     _fadeAnim = Tween<double>(begin: 0, end: 1)
         .animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut));
 
@@ -317,19 +307,29 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     notifier.goToMonth(nextMonth.year, nextMonth.month);
 
     _slideAnim = Tween<Offset>(
-      begin: Offset(dir.toDouble(), 0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic));
+            begin: Offset(dir.toDouble(), 0), end: Offset.zero)
+        .animate(
+            CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic));
     _slideCtrl.forward(from: 0);
   }
 
   @override
   Widget build(BuildContext context) {
+    // ── Global lang → sync calendarProvider's internal isBangla ──────────
+    ref.listen<bool>(langProvider, (prev, next) {
+      // Only act on actual changes, not the initial fire
+      if (prev == null || prev == next) return;
+      final calState = ref.read(calendarProvider).valueOrNull;
+      if (calState != null && calState.isBangla != next) {
+        ref.read(calendarProvider.notifier).toggleLanguage();
+      }
+    });
+    final bn = ref.watch(langProvider);
     final async = ref.watch(calendarProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceGreen,
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(bn),
       body: async.when(
         loading: () => const _LoadingView(),
         error: (err, _) => _ErrorView(
@@ -356,29 +356,23 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── BOTTOM NAV — matches home_screen.dart exactly ───────────────────────
-
-  Widget _buildBottomNav() {
+  // ─── BOTTOM NAV ──────────────────────────────────────────────────────────
+  Widget _buildBottomNav(bool bn) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, -4)),
         ],
       ),
       child: ClipRRect(
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
         child: BottomNavigationBar(
           currentIndex: _currentTabIndex,
           onTap: _onTabTapped,
@@ -390,24 +384,26 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
           unselectedLabelStyle: const TextStyle(fontSize: 10),
           backgroundColor: Colors.white,
           elevation: 0,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined), label: 'হোম'),
+                icon: const Icon(Icons.home_outlined),
+                label: bn ? 'হোম' : 'Home'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.store_outlined), label: 'বাজার'),
+                icon: const Icon(Icons.store_outlined),
+                label: bn ? 'বাজার' : 'Market'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.miscellaneous_services_outlined),
-                label: 'সেবা'),
+                icon: const Icon(Icons.miscellaneous_services_outlined),
+                label: bn ? 'সেবা' : 'Services'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline), label: 'প্রোফাইল'),
+                icon: const Icon(Icons.person_outline),
+                label: bn ? 'প্রোফাইল' : 'Profile'),
           ],
         ),
       ),
     );
   }
 
-  // ─── 1. APP BAR ───────────────────────────────────────────────────────────
-
+  // ─── 1. APP BAR — NO language toggle (controlled from home screen) ────────
   Widget _buildAppBar(CalendarState state) {
     return SliverAppBar(
       pinned: true,
@@ -433,33 +429,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () => ref.read(calendarProvider.notifier).toggleLanguage(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.35), width: 1),
-              ),
-              child: Text(
-                state.isBangla ? 'EN' : 'বাং',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
+          // Language toggle removed — controlled globally from home screen top bar
         ],
       ),
     );
   }
 
-  // ─── 2. DUAL MONTH HEADER ─────────────────────────────────────────────────
-
+  // ─── 2. DUAL MONTH HEADER ────────────────────────────────────────────────
   Widget _buildDualMonthHeader(CalendarState state) {
     final b1 = _BanglaHelper.convert(
         DateTime(state.focusedYear, state.focusedMonth, 1));
@@ -481,10 +457,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3))
           ],
         ),
         child: Row(
@@ -494,9 +469,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: const BoxDecoration(
-                  color: AppTheme.bgLight,
-                  shape: BoxShape.circle,
-                ),
+                    color: AppTheme.bgLight, shape: BoxShape.circle),
                 child: const Icon(Icons.chevron_left_rounded,
                     color: AppTheme.primaryGreen, size: 20),
               ),
@@ -509,11 +482,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                         ? '${_monthNameBn(state.focusedMonth)} ${_BanglaHelper.digits(state.focusedYear)}'
                         : '${_monthNameEn(state.focusedMonth)} ${state.focusedYear}',
                     style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF1B4332),
-                      letterSpacing: 0.2,
-                    ),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1B4332),
+                        letterSpacing: 0.2),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
@@ -521,18 +493,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppTheme.bgLight,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      banglaLabel,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryGreen,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                        color: AppTheme.bgLight,
+                        borderRadius: BorderRadius.circular(20)),
+                    child: Text(banglaLabel,
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primaryGreen),
+                        textAlign: TextAlign.center),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -543,9 +511,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: const BoxDecoration(
-                  color: AppTheme.bgLight,
-                  shape: BoxShape.circle,
-                ),
+                    color: AppTheme.bgLight, shape: BoxShape.circle),
                 child: const Icon(Icons.chevron_right_rounded,
                     color: AppTheme.primaryGreen, size: 20),
               ),
@@ -557,7 +523,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   }
 
   // ─── 3. SEASON BANNER ────────────────────────────────────────────────────
-
   Widget _buildSeasonBanner(CalendarState state) {
     final cropCount = state.activeThisMonth.length;
     return Padding(
@@ -566,17 +531,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [AppTheme.lightGreen, AppTheme.primaryGreen],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+              colors: [AppTheme.lightGreen, AppTheme.primaryGreen],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primaryGreen.withValues(alpha: 0.25),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+                color: AppTheme.primaryGreen.withValues(alpha: 0.25),
+                blurRadius: 10,
+                offset: const Offset(0, 4))
           ],
         ),
         child: Row(
@@ -587,35 +550,30 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                     ? _BanglaHelper.seasonBn(state.focusedMonth)
                     : _BanglaHelper.seasonEn(state.focusedMonth),
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800),
               ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10)),
               child: Column(
                 children: [
                   Text(
-                    state.isBangla
-                        ? _BanglaHelper.digits(cropCount)
-                        : '$cropCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    state.isBangla ? 'সক্রিয়\nফসল' : 'Active\nCrops',
-                    style: const TextStyle(color: Colors.white70, fontSize: 10),
-                    textAlign: TextAlign.center,
-                  ),
+                      state.isBangla
+                          ? _BanglaHelper.digits(cropCount)
+                          : '$cropCount',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900)),
+                  Text(state.isBangla ? 'সক্রিয়\nফসল' : 'Active\nCrops',
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 10),
+                      textAlign: TextAlign.center),
                 ],
               ),
             ),
@@ -626,7 +584,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   }
 
   // ─── 4. CATEGORY FILTER ──────────────────────────────────────────────────
-
   Widget _buildCategoryFilter(CalendarState state) {
     final cats = [
       null,
@@ -635,7 +592,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
       CropCategory.fruit,
       CropCategory.spice,
       CropCategory.oilseed,
-      CropCategory.pulse,
+      CropCategory.pulse
     ];
     final labelsEn = {
       null: 'All',
@@ -644,7 +601,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
       CropCategory.fruit: 'Fruit',
       CropCategory.spice: 'Spice',
       CropCategory.oilseed: 'Oil',
-      CropCategory.pulse: 'Pulse',
+      CropCategory.pulse: 'Pulse'
     };
     final labelsBn = {
       null: 'সব',
@@ -653,7 +610,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
       CropCategory.fruit: 'ফল',
       CropCategory.spice: 'মসলা',
       CropCategory.oilseed: 'তেলবীজ',
-      CropCategory.pulse: 'ডাল',
+      CropCategory.pulse: 'ডাল'
     };
 
     return SizedBox(
@@ -677,17 +634,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                 color: active ? AppTheme.primaryGreen : Colors.white,
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: active
-                      ? AppTheme.primaryGreen
-                      : Colors.grey.withValues(alpha: 0.22),
-                ),
+                    color: active
+                        ? AppTheme.primaryGreen
+                        : Colors.grey.withValues(alpha: 0.22)),
                 boxShadow: active
                     ? [
                         BoxShadow(
-                          color: AppTheme.primaryGreen.withValues(alpha: 0.28),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
+                            color:
+                                AppTheme.primaryGreen.withValues(alpha: 0.28),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2))
                       ]
                     : null,
               ),
@@ -698,14 +654,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                       size: 14,
                       color: active ? Colors.white : AppTheme.primaryGreen),
                   const SizedBox(width: 5),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: active ? Colors.white : const Color(0xFF444444),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
+                  Text(label,
+                      style: TextStyle(
+                          color:
+                              active ? Colors.white : const Color(0xFF444444),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12)),
                 ],
               ),
             ),
@@ -716,7 +670,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   }
 
   // ─── 5. CALENDAR CARD ────────────────────────────────────────────────────
-
   Widget _buildCalendarCard(CalendarState state) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -726,10 +679,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 4))
           ],
         ),
         child: Column(
@@ -737,10 +689,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             const SizedBox(height: 12),
             _buildWeekdayRow(state),
             const SizedBox(height: 4),
-            SlideTransition(
-              position: _slideAnim,
-              child: _buildDaysGrid(state),
-            ),
+            SlideTransition(position: _slideAnim, child: _buildDaysGrid(state)),
             const SizedBox(height: 8),
             _buildLegend(state),
             const SizedBox(height: 12),
@@ -761,13 +710,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             (i) => Expanded(
                   child: Column(
                     children: [
-                      Text(
-                        state.isBangla ? bnDays[i] : engDays[i],
-                        style: const TextStyle(
-                            color: Color(0xFF555555),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700),
-                      ),
+                      Text(state.isBangla ? bnDays[i] : engDays[i],
+                          style: const TextStyle(
+                              color: Color(0xFF555555),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
                       if (!state.isBangla)
                         Text(bnDays[i],
                             style: TextStyle(
@@ -795,13 +742,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     final hasCultivation = state.sowingThisMonth.isNotEmpty;
 
     Color? dotColor;
-    if (hasPeak) {
+    if (hasPeak)
       dotColor = _statusColors[_Status.peak];
-    } else if (hasHarvest) {
+    else if (hasHarvest)
       dotColor = _statusColors[_Status.harvest];
-    } else if (hasCultivation) {
-      dotColor = _statusColors[_Status.cultivation];
-    }
+    else if (hasCultivation) dotColor = _statusColors[_Status.cultivation];
 
     final cells = <Widget>[
       ...List.filled(start, const SizedBox()),
@@ -846,12 +791,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
         ? [
             (_Status.peak, 'ভরা মৌসুম'),
             (_Status.harvest, 'ফসল তোলা'),
-            (_Status.cultivation, 'বপন'),
+            (_Status.cultivation, 'বপন')
           ]
         : [
             (_Status.peak, 'Peak Season'),
             (_Status.harvest, 'Harvest'),
-            (_Status.cultivation, 'Sow'),
+            (_Status.cultivation, 'Sow')
           ];
 
     return Padding(
@@ -865,13 +810,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: _statusColors[item.$1],
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                              color: _statusColors[item.$1],
+                              shape: BoxShape.circle)),
                       const SizedBox(width: 4),
                       Text(item.$2,
                           style:
@@ -884,8 +827,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 6. MONTH CROP OVERVIEW ───────────────────────────────────────────────
-
+  // ─── 6. MONTH CROP OVERVIEW ──────────────────────────────────────────────
   Widget _buildMonthCropOverview(CalendarState state) {
     final crops = state.activeThisMonth
         .where((c) =>
@@ -897,17 +839,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         child: Center(
-          child: Column(
-            children: [
-              Icon(Icons.eco_rounded, size: 40, color: Colors.grey[300]),
-              const SizedBox(height: 8),
-              Text(
-                state.isBangla ? 'এই মাসে কোনো ফসল নেই' : 'No crops this month',
-                style: TextStyle(color: Colors.grey[500], fontSize: 13),
-              ),
-            ],
-          ),
-        ),
+            child: Column(children: [
+          Icon(Icons.eco_rounded, size: 40, color: Colors.grey[300]),
+          const SizedBox(height: 8),
+          Text(state.isBangla ? 'এই মাসে কোনো ফসল নেই' : 'No crops this month',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+        ])),
       );
     }
 
@@ -916,50 +853,41 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.bar_chart_rounded,
-                  color: AppTheme.primaryGreen, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                state.isBangla ? 'এই মাসের ফসল' : 'This Month\'s Crops',
+          Row(children: [
+            const Icon(Icons.bar_chart_rounded,
+                color: AppTheme.primaryGreen, size: 18),
+            const SizedBox(width: 6),
+            Text(state.isBangla ? 'এই মাসের ফসল' : "This Month's Crops",
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1B4332),
-                ),
-              ),
-            ],
-          ),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1B4332))),
+          ]),
           const SizedBox(height: 12),
           ...crops.take(6).map((crop) => _CropStatusTile(
-                crop: crop,
-                status: crop.statusFor(state.focusedMonth),
-                isBangla: state.isBangla,
-              )),
+              crop: crop,
+              status: crop.statusFor(state.focusedMonth),
+              isBangla: state.isBangla)),
           if (crops.length > 6)
             Center(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  state.isBangla
-                      ? 'আরও ${_BanglaHelper.digits(crops.length - 6)} টি ফসল'
-                      : '+ ${crops.length - 6} more crops',
-                  style: const TextStyle(
+                child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                state.isBangla
+                    ? 'আরও ${_BanglaHelper.digits(crops.length - 6)} টি ফসল'
+                    : '+ ${crops.length - 6} more crops',
+                style: const TextStyle(
                     color: AppTheme.lightGreen,
                     fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
+                    fontSize: 12),
               ),
-            ),
+            )),
         ],
       ),
     );
   }
 
-  // ─── 7. DATE DETAIL PANEL ─────────────────────────────────────────────────
-
+  // ─── 7. DATE DETAIL PANEL ────────────────────────────────────────────────
   Widget _buildDateDetailPanel(CalendarState state) {
     final day = state.selectedDay!;
     final date = DateTime(state.focusedYear, state.focusedMonth, day);
@@ -981,10 +909,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4))
             ],
           ),
           child: Column(
@@ -994,8 +921,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                 padding: const EdgeInsets.all(16),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [AppTheme.lightGreen, AppTheme.primaryGreen],
-                  ),
+                      colors: [AppTheme.lightGreen, AppTheme.primaryGreen]),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Row(
@@ -1010,28 +936,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                                 ? '${_BanglaHelper.dayBn(date.weekday)}, ${_BanglaHelper.digits(day)} ${_monthNameBn(date.month)} ${_BanglaHelper.digits(date.year)}'
                                 : '${_BanglaHelper.dayEn(date.weekday)}, ${_monthNameEn(date.month)} $day, ${date.year}',
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                            ),
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 5),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
+                                color: Colors.white.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(20)),
                             child: Text(
                               state.isBangla
                                   ? '${bangla['dayBn']} ${bangla['monthName']} ${bangla['yearBn']} বঙ্গাব্দ'
                                   : '${_BanglaHelper.dayEn(date.weekday)}, ${bangla['dayBn']} ${bangla['monthName']} ${bangla['yearBn']} বঙ্গাব্দ',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.92),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
@@ -1042,29 +965,22 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10)),
+                      child: Column(children: [
+                        Text(
                             state.isBangla
                                 ? _BanglaHelper.digits(crops.length)
                                 : '${crops.length}',
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          Text(
-                            state.isBangla ? 'সক্রিয়\nফসল' : 'Active\nCrops',
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900)),
+                        Text(state.isBangla ? 'সক্রিয়\nফসল' : 'Active\nCrops',
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 9),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+                            textAlign: TextAlign.center),
+                      ]),
                     ),
                   ],
                 ),
@@ -1073,22 +989,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                 Padding(
                   padding: const EdgeInsets.all(24),
                   child: Center(
-                    child: Column(
-                      children: [
-                        Icon(Icons.eco_rounded,
-                            size: 36, color: Colors.grey[300]),
-                        const SizedBox(height: 8),
-                        Text(
-                          state.isBangla
-                              ? 'এই ফিল্টারে কোনো ফসল নেই'
-                              : 'No crops for selected filter',
-                          style:
-                              TextStyle(color: Colors.grey[500], fontSize: 13),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
+                      child: Column(children: [
+                    Icon(Icons.eco_rounded, size: 36, color: Colors.grey[300]),
+                    const SizedBox(height: 8),
+                    Text(
+                        state.isBangla
+                            ? 'এই ফিল্টারে কোনো ফসল নেই'
+                            : 'No crops for selected filter',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                        textAlign: TextAlign.center),
+                  ])),
                 )
               else
                 Padding(
@@ -1096,10 +1006,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                   child: Column(
                     children: crops
                         .map((crop) => _DetailedCropCard(
-                              crop: crop,
-                              status: crop.statusFor(date.month),
-                              isBangla: state.isBangla,
-                            ))
+                            crop: crop,
+                            status: crop.statusFor(date.month),
+                            isBangla: state.isBangla))
                         .toList(),
                   ),
                 ),
@@ -1110,8 +1019,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── HELPERS ──────────────────────────────────────────────────────────────
-
+  // ─── HELPERS ─────────────────────────────────────────────────────────────
   static const _monthsEn = [
     'January',
     'February',
@@ -1124,7 +1032,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     'September',
     'October',
     'November',
-    'December',
+    'December'
   ];
   static const _monthsBn = [
     'জানুয়ারি',
@@ -1138,7 +1046,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     'সেপ্টেম্বর',
     'অক্টোবর',
     'নভেম্বর',
-    'ডিসেম্বর',
+    'ডিসেম্বর'
   ];
 
   String _monthNameEn(int m) => _monthsEn[m - 1];
@@ -1190,8 +1098,6 @@ class _DayCell extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              // In BN mode: engDay already holds Bengali digits (passed in from _buildDaysGrid)
-              // In EN mode: engDay holds ASCII digits, show bnDay as sub-label
               engDay,
               style: TextStyle(
                 fontSize: 14,
@@ -1213,29 +1119,25 @@ class _DayCell extends StatelessWidget {
                     : Colors.grey.withValues(alpha: 0.3),
                 margin: const EdgeInsets.symmetric(vertical: 1),
               ),
-              Text(
-                bnDay,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected
-                      ? Colors.white.withValues(alpha: 0.85)
-                      : isToday
-                          ? AppTheme.primaryGreen.withValues(alpha: 0.75)
-                          : AppTheme.textHint,
-                ),
-              ),
+              Text(bnDay,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected
+                        ? Colors.white.withValues(alpha: 0.85)
+                        : isToday
+                            ? AppTheme.primaryGreen.withValues(alpha: 0.75)
+                            : AppTheme.textHint,
+                  )),
             ],
             if (dotColor != null) ...[
               const SizedBox(height: 2),
               Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : dotColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                      color: isSelected ? Colors.white : dotColor,
+                      shape: BoxShape.circle)),
             ],
           ],
         ),
@@ -1249,12 +1151,8 @@ class _DayCell extends StatelessWidget {
 // ════════════════════════════════════════════════════════════════════════════
 
 class _CropStatusTile extends StatelessWidget {
-  const _CropStatusTile({
-    required this.crop,
-    required this.status,
-    required this.isBangla,
-  });
-
+  const _CropStatusTile(
+      {required this.crop, required this.status, required this.isBangla});
   final CropCalendar crop;
   final _Status status;
   final bool isBangla;
@@ -1264,52 +1162,38 @@ class _CropStatusTile extends StatelessWidget {
     final color = _statusColors[status]!;
     final label =
         isBangla ? _statusLabelsBn[status]! : _statusLabelsEn[status]!;
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          _CropImage(imageUrl: crop.imageUrl, size: 36, color: color),
-          const SizedBox(width: 10),
-          Expanded(
+      child: Row(children: [
+        _CropImage(imageUrl: crop.imageUrl, size: 36, color: color),
+        const SizedBox(width: 10),
+        Expanded(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    isBangla ? crop.cropNameBn : crop.cropNameEn,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+                child: Text(isBangla ? crop.cropNameBn : crop.cropNameEn,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: Color(0xFF222222),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: color.withValues(alpha: 0.30), width: 1),
-                  ),
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Color(0xFF222222)),
+                    overflow: TextOverflow.ellipsis)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(8),
+                border:
+                    Border.all(color: color.withValues(alpha: 0.30), width: 1),
+              ),
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 10, color: color, fontWeight: FontWeight.w700)),
             ),
-          ),
-        ],
-      ),
+          ],
+        )),
+      ]),
     );
   }
 }
@@ -1319,12 +1203,8 @@ class _CropStatusTile extends StatelessWidget {
 // ════════════════════════════════════════════════════════════════════════════
 
 class _DetailedCropCard extends StatelessWidget {
-  const _DetailedCropCard({
-    required this.crop,
-    required this.status,
-    required this.isBangla,
-  });
-
+  const _DetailedCropCard(
+      {required this.crop, required this.status, required this.isBangla});
   final CropCalendar crop;
   final _Status status;
   final bool isBangla;
@@ -1344,78 +1224,54 @@ class _DetailedCropCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _CropImage(imageUrl: crop.imageUrl, size: 44, color: color),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _CropImage(imageUrl: crop.imageUrl, size: 44, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+              child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isBangla ? crop.cropNameBn : crop.cropNameEn,
-                      style: const TextStyle(
+                Text(isBangla ? crop.cropNameBn : crop.cropNameEn,
+                    style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF1B4332),
-                      ),
-                    ),
-                    Text(
-                      isBangla ? crop.cropNameEn : crop.cropNameBn,
-                      style: TextStyle(
+                        color: Color(0xFF1B4332))),
+                Text(isBangla ? crop.cropNameEn : crop.cropNameBn,
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: AppTheme.primaryGreen.withValues(alpha: 0.75),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
+                        color: AppTheme.primaryGreen.withValues(alpha: 0.75))),
+              ])),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(8)),
+            child: Text(label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700)),
           ),
-          if (notes != null && notes.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
+        ]),
+        if (notes != null && notes.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline_rounded,
-                      size: 13, color: Colors.grey[500]),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Text(
-                      notes,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                borderRadius: BorderRadius.circular(10)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.info_outline_rounded,
+                  size: 13, color: Colors.grey[500]),
+              const SizedBox(width: 5),
+              Expanded(
+                  child: Text(notes,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
+            ]),
+          ),
         ],
-      ),
+      ]),
     );
   }
 }
@@ -1425,12 +1281,8 @@ class _DetailedCropCard extends StatelessWidget {
 // ════════════════════════════════════════════════════════════════════════════
 
 class _CropImage extends StatelessWidget {
-  const _CropImage({
-    required this.imageUrl,
-    required this.size,
-    required this.color,
-  });
-
+  const _CropImage(
+      {required this.imageUrl, required this.size, required this.color});
   final String? imageUrl;
   final double size;
   final Color color;
@@ -1438,7 +1290,6 @@ class _CropImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
-
     return Container(
       width: size,
       height: size,
@@ -1446,43 +1297,28 @@ class _CropImage extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(size * 0.27),
-        border: Border.all(
-          color: color.withValues(alpha: 0.18),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.18), width: 1),
       ),
       child: hasImage
-          ? Image.network(
-              imageUrl!,
+          ? Image.network(imageUrl!,
               fit: BoxFit.cover,
               loadingBuilder: (_, child, progress) {
                 if (progress == null) return child;
                 return Center(
-                  child: SizedBox(
-                    width: size * 0.4,
-                    height: size * 0.4,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: color,
-                      value: progress.expectedTotalBytes != null
-                          ? progress.cumulativeBytesLoaded /
-                              progress.expectedTotalBytes!
-                          : null,
-                    ),
-                  ),
-                );
+                    child: SizedBox(
+                        width: size * 0.4,
+                        height: size * 0.4,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: color,
+                            value: progress.expectedTotalBytes != null
+                                ? progress.cumulativeBytesLoaded /
+                                    progress.expectedTotalBytes!
+                                : null)));
               },
-              errorBuilder: (_, __, ___) => Icon(
-                Icons.eco_rounded,
-                size: size * 0.5,
-                color: color,
-              ),
-            )
-          : Icon(
-              Icons.eco_rounded,
-              size: size * 0.5,
-              color: color,
-            ),
+              errorBuilder: (_, __, ___) =>
+                  Icon(Icons.eco_rounded, size: size * 0.5, color: color))
+          : Icon(Icons.eco_rounded, size: size * 0.5, color: color),
     );
   }
 }
@@ -1497,17 +1333,13 @@ class _LoadingView extends StatelessWidget {
   Widget build(BuildContext context) => const Scaffold(
         backgroundColor: AppTheme.surfaceGreen,
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: AppTheme.primaryGreen),
-              SizedBox(height: 16),
-              Text('লোড হচ্ছে...',
-                  style:
-                      TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
-            ],
-          ),
-        ),
+            child:
+                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          CircularProgressIndicator(color: AppTheme.primaryGreen),
+          SizedBox(height: 16),
+          Text('লোড হচ্ছে...',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+        ])),
       );
 }
 
@@ -1519,33 +1351,26 @@ class _ErrorView extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: AppTheme.surfaceGreen,
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.cloud_off_rounded, size: 52, color: Colors.grey[300]),
-              const SizedBox(height: 12),
-              const Text('তথ্য লোড হয়নি',
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary)),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  error,
+            child:
+                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.cloud_off_rounded, size: 52, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          const Text('তথ্য লোড হয়নি',
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary)),
+          const SizedBox(height: 8),
+          Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(error,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('আবার চেষ্টা করুন'),
-              ),
-            ],
-          ),
-        ),
+                  textAlign: TextAlign.center)),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('আবার চেষ্টা করুন')),
+        ])),
       );
 }

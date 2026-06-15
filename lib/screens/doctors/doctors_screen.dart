@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../core/router.dart';
+import '../../providers/lang_provider.dart';
 import '../../services/supabase_service.dart';
 
 // ---------------------------------------------------------------------------
-// Providers (inline — consistent with rentals_screen pattern)
+// Providers
 // ---------------------------------------------------------------------------
-
-final _doctorsLangProvider = StateProvider<bool>((ref) => true); // true = BN
-
 final _doctorsDivisionProvider = StateProvider<String?>((ref) => null);
 
 final _doctorsListProvider =
@@ -22,7 +20,6 @@ final _doctorsListProvider =
 // ---------------------------------------------------------------------------
 // DoctorsScreen
 // ---------------------------------------------------------------------------
-
 class DoctorsScreen extends ConsumerStatefulWidget {
   const DoctorsScreen({super.key});
 
@@ -43,7 +40,6 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
     {'en': 'Rangpur', 'bn': 'রংপুর'},
   ];
 
-  // Map of short specialization tags → bilingual labels
   static const Map<String, Map<String, String>> _specLabels = {
     'Soil Science': {'en': 'Soil Science', 'bn': 'মাটি বিজ্ঞান'},
     'Pest Control': {'en': 'Pest Control', 'bn': 'কীটনাশক'},
@@ -57,7 +53,6 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
     'Organic Farming': {'en': 'Organic Farming', 'bn': 'জৈব কৃষি'},
   };
 
-  // Day abbreviations
   static const Map<String, Map<String, String>> _dayAbbr = {
     'Saturday': {'en': 'Sat', 'bn': 'শনি'},
     'Sunday': {'en': 'Sun', 'bn': 'রবি'},
@@ -83,24 +78,24 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isBn = ref.watch(_doctorsLangProvider);
+    final bn = ref.watch(langProvider);
     final selectedDivision = ref.watch(_doctorsDivisionProvider);
     final doctorsAsync = ref.watch(_doctorsListProvider(selectedDivision));
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceGreen,
-      appBar: _buildAppBar(isBn),
+      appBar: _buildAppBar(bn),
       body: Column(
         children: [
-          _buildDivisionFilter(isBn, selectedDivision),
+          _buildDivisionFilter(bn, selectedDivision),
           Expanded(
             child: doctorsAsync.when(
               loading: () => const Center(
-                child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-              ),
-              error: (e, _) => _buildError(isBn, e),
+                  child:
+                      CircularProgressIndicator(color: AppTheme.primaryGreen)),
+              error: (e, _) => _buildError(bn, e),
               data: (doctors) => doctors.isEmpty
-                  ? _buildEmpty(isBn)
+                  ? _buildEmpty(bn)
                   : RefreshIndicator(
                       color: AppTheme.primaryGreen,
                       onRefresh: () async {
@@ -111,7 +106,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                         itemCount: doctors.length,
                         itemBuilder: (context, index) => _DoctorCard(
                           doctor: doctors[index],
-                          isBn: isBn,
+                          isBn: bn,
                           dayLabel: _dayLabel,
                           specLabel: _specLabel,
                         ),
@@ -121,11 +116,11 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context, isBn),
+      bottomNavigationBar: _buildBottomNav(context, bn),
     );
   }
 
-  AppBar _buildAppBar(bool isBn) {
+  AppBar _buildAppBar(bool bn) {
     return AppBar(
       backgroundColor: AppTheme.primaryGreen,
       foregroundColor: Colors.white,
@@ -135,40 +130,15 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
             Navigator.of(context).pushReplacementNamed(AppRouter.home),
       ),
       title: Text(
-        isBn ? 'কৃষি বিশেষজ্ঞ' : 'Agricultural Experts',
+        bn ? 'কৃষি বিশেষজ্ঞ' : 'Agricultural Experts',
         style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
+            fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
       ),
-      actions: [
-        // EN / BN toggle
-        GestureDetector(
-          onTap: () => ref.read(_doctorsLangProvider.notifier).state = !isBn,
-          child: Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-            ),
-            child: Text(
-              isBn ? 'EN' : 'বাং',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ),
-      ],
+      // No language toggle — controlled globally from home screen
     );
   }
 
-  Widget _buildDivisionFilter(bool isBn, String? selected) {
+  Widget _buildDivisionFilter(bool bn, String? selected) {
     return Container(
       color: AppTheme.primaryGreen,
       child: Container(
@@ -183,13 +153,12 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                isBn ? 'বিভাগ অনুযায়ী' : 'Filter by Division',
+                bn ? 'বিভাগ অনুযায়ী' : 'Filter by Division',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary.withValues(alpha: 0.5),
-                  letterSpacing: 0.5,
-                ),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary.withValues(alpha: 0.5),
+                    letterSpacing: 0.5),
               ),
             ),
             SizedBox(
@@ -203,9 +172,9 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                   final value = i == 0 ? null : div['en']!;
                   final isSelected = selected == value;
                   return GestureDetector(
-                    onTap: () {
-                      ref.read(_doctorsDivisionProvider.notifier).state = value;
-                    },
+                    onTap: () => ref
+                        .read(_doctorsDivisionProvider.notifier)
+                        .state = value,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
@@ -215,29 +184,27 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                             isSelected ? AppTheme.primaryGreen : Colors.white,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: isSelected
-                              ? AppTheme.primaryGreen
-                              : AppTheme.borderGrey,
-                        ),
+                            color: isSelected
+                                ? AppTheme.primaryGreen
+                                : AppTheme.borderGrey),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: AppTheme.primaryGreen
-                                      .withValues(alpha: 0.25),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                )
+                                    color: AppTheme.primaryGreen
+                                        .withValues(alpha: 0.25),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2))
                               ]
                             : [],
                       ),
                       child: Text(
-                        isBn ? div['bn']! : div['en']!,
+                        bn ? div['bn']! : div['en']!,
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              isSelected ? Colors.white : AppTheme.textPrimary,
-                        ),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : AppTheme.textPrimary),
                       ),
                     ),
                   );
@@ -251,7 +218,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
     );
   }
 
-  Widget _buildError(bool isBn, Object e) {
+  Widget _buildError(bool bn, Object e) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -261,28 +228,24 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
             Icon(Icons.error_outline_rounded,
                 color: Colors.red.shade300, size: 48),
             const SizedBox(height: 12),
-            Text(
-              isBn ? 'তথ্য লোড হয়নি' : 'Failed to load',
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            ),
+            Text(bn ? 'তথ্য লোড হয়নি' : 'Failed to load',
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
             const SizedBox(height: 8),
-            Text(
-              e.toString(),
-              style: TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textPrimary.withValues(alpha: 0.5)),
-              textAlign: TextAlign.center,
-            ),
+            Text(e.toString(),
+                style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textPrimary.withValues(alpha: 0.5)),
+                textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryGreen,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
               onPressed: () => ref.invalidate(_doctorsListProvider),
-              child: Text(isBn ? 'আবার চেষ্টা করুন' : 'Retry'),
+              child: Text(bn ? 'আবার চেষ্টা করুন' : 'Retry'),
             ),
           ],
         ),
@@ -290,7 +253,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
     );
   }
 
-  Widget _buildEmpty(bool isBn) {
+  Widget _buildEmpty(bool bn) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -299,31 +262,27 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
               size: 64, color: AppTheme.primaryGreen.withValues(alpha: 0.35)),
           const SizedBox(height: 16),
           Text(
-            isBn
-                ? 'এই বিভাগে কোনো বিশেষজ্ঞ নেই'
-                : 'No experts in this division',
+            bn ? 'এই বিভাগে কোনো বিশেষজ্ঞ নেই' : 'No experts in this division',
             style: TextStyle(
-              fontSize: 15,
-              color: AppTheme.textPrimary.withValues(alpha: 0.5),
-              fontWeight: FontWeight.w500,
-            ),
+                fontSize: 15,
+                color: AppTheme.textPrimary.withValues(alpha: 0.5),
+                fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomNav(BuildContext context, bool isBn) {
+  Widget _buildBottomNav(BuildContext context, bool bn) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, -2),
-          ),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, -2))
         ],
       ),
       child: SafeArea(
@@ -333,26 +292,22 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem(
-                icon: Icons.home_rounded,
-                label: isBn ? 'হোম' : 'Home',
-                onTap: () =>
-                    Navigator.of(context).pushReplacementNamed(AppRouter.home),
-              ),
+                  icon: Icons.home_rounded,
+                  label: bn ? 'হোম' : 'Home',
+                  onTap: () => Navigator.of(context)
+                      .pushReplacementNamed(AppRouter.home)),
               _NavItem(
-                icon: Icons.storefront_rounded,
-                label: isBn ? 'বাজার' : 'Market',
-                onTap: () {},
-              ),
+                  icon: Icons.storefront_rounded,
+                  label: bn ? 'বাজার' : 'Market',
+                  onTap: () {}),
               _NavItem(
-                icon: Icons.chat_bubble_rounded,
-                label: isBn ? 'বার্তা' : 'Chat',
-                onTap: () {},
-              ),
+                  icon: Icons.chat_bubble_rounded,
+                  label: bn ? 'বার্তা' : 'Chat',
+                  onTap: () {}),
               _NavItem(
-                icon: Icons.person_rounded,
-                label: isBn ? 'প্রোফাইল' : 'Profile',
-                onTap: () {},
-              ),
+                  icon: Icons.person_rounded,
+                  label: bn ? 'প্রোফাইল' : 'Profile',
+                  onTap: () {}),
             ],
           ),
         ),
@@ -364,7 +319,6 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
 // ---------------------------------------------------------------------------
 // _DoctorCard
 // ---------------------------------------------------------------------------
-
 class _DoctorCard extends StatefulWidget {
   final DoctorModel doctor;
   final bool isBn;
@@ -392,9 +346,7 @@ class _DoctorCardState extends State<_DoctorCard>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-    );
+        vsync: this, duration: const Duration(milliseconds: 250));
     _expandAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
@@ -438,27 +390,23 @@ class _DoctorCardState extends State<_DoctorCard>
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: _expanded
-                ? specColor.withValues(alpha: 0.35)
-                : AppTheme.borderGrey,
-          ),
+              color: _expanded
+                  ? specColor.withValues(alpha: 0.35)
+                  : AppTheme.borderGrey),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: _expanded ? 0.07 : 0.04),
-              blurRadius: _expanded ? 14 : 6,
-              offset: const Offset(0, 3),
-            ),
+                color: Colors.black.withValues(alpha: _expanded ? 0.07 : 0.04),
+                blurRadius: _expanded ? 14 : 6,
+                offset: const Offset(0, 3))
           ],
         ),
         child: Column(
           children: [
-            // ── Header row ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Avatar circle with initials
                   Container(
                     width: 52,
                     height: 52,
@@ -466,181 +414,140 @@ class _DoctorCardState extends State<_DoctorCard>
                       color: specColor.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: specColor.withValues(alpha: 0.3),
-                        width: 1.5,
-                      ),
+                          color: specColor.withValues(alpha: 0.3), width: 1.5),
                     ),
                     child: Center(
-                      child: Text(
-                        _initials(d.name),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: specColor,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
+                        child: Text(_initials(d.name),
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: specColor,
+                                letterSpacing: 0.5))),
                   ),
                   const SizedBox(width: 12),
-                  // Name + spec + location
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          d.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        if (d.specialization != null) ...[
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: specColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(d.name,
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textPrimary)),
+                          if (d.specialization != null) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                  color: specColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6)),
+                              child: Text(
+                                  widget.specLabel(d.specialization, isBn),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: specColor)),
                             ),
-                            child: Text(
-                              widget.specLabel(d.specialization, isBn),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: specColor,
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
+                          ],
+                          const SizedBox(height: 6),
+                          Row(children: [
                             Icon(Icons.location_on_rounded,
                                 size: 13,
                                 color: AppTheme.textPrimary
                                     .withValues(alpha: 0.4)),
                             const SizedBox(width: 3),
-                            Text(
-                              _locationText(d, isBn),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textPrimary
-                                    .withValues(alpha: 0.55),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                            Text(_locationText(d, isBn),
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textPrimary
+                                        .withValues(alpha: 0.55))),
+                          ]),
+                        ]),
                   ),
-                  // Expand chevron
                   AnimatedRotation(
                     turns: _expanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 250),
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: AppTheme.textPrimary.withValues(alpha: 0.35),
-                      size: 22,
-                    ),
+                    child: Icon(Icons.keyboard_arrow_down_rounded,
+                        color: AppTheme.textPrimary.withValues(alpha: 0.35),
+                        size: 22),
                   ),
                 ],
               ),
             ),
-
-            // ── Expandable detail section ────────────────────────────────
             SizeTransition(
               sizeFactor: _expandAnim,
-              child: Column(
-                children: [
-                  const Divider(
+              child: Column(children: [
+                const Divider(
                     height: 1,
                     color: AppTheme.borderGrey,
                     indent: 16,
-                    endIndent: 16,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Column(
-                      children: [
-                        // Phone
-                        _InfoRow(
-                          icon: Icons.phone_rounded,
-                          iconColor: AppTheme.primaryGreen,
-                          label: isBn ? 'ফোন' : 'Phone',
-                          value: d.phone,
-                        ),
-                        // Email
-                        if (d.email != null) ...[
-                          const SizedBox(height: 8),
-                          _InfoRow(
-                            icon: Icons.email_rounded,
-                            iconColor: const Color(0xFF4E598C),
-                            label: isBn ? 'ইমেইল' : 'Email',
-                            value: d.email!,
-                          ),
-                        ],
-                        // Available hours
-                        if (d.availableHours != null) ...[
-                          const SizedBox(height: 8),
-                          _InfoRow(
-                            icon: Icons.access_time_rounded,
-                            iconColor: const Color(0xFF6B4226),
-                            label: isBn ? 'সময়' : 'Hours',
-                            value: d.availableHours!,
-                          ),
-                        ],
-                        // Available days
-                        if (d.availableDays.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.calendar_today_rounded,
-                                  size: 15,
-                                  color: AppTheme.textPrimary
-                                      .withValues(alpha: 0.45)),
-                              const SizedBox(width: 8),
-                              Expanded(
+                    endIndent: 16),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: Column(children: [
+                    _InfoRow(
+                        icon: Icons.phone_rounded,
+                        iconColor: AppTheme.primaryGreen,
+                        label: isBn ? 'ফোন' : 'Phone',
+                        value: d.phone),
+                    if (d.email != null) ...[
+                      const SizedBox(height: 8),
+                      _InfoRow(
+                          icon: Icons.email_rounded,
+                          iconColor: const Color(0xFF4E598C),
+                          label: isBn ? 'ইমেইল' : 'Email',
+                          value: d.email!),
+                    ],
+                    if (d.availableHours != null) ...[
+                      const SizedBox(height: 8),
+                      _InfoRow(
+                          icon: Icons.access_time_rounded,
+                          iconColor: const Color(0xFF6B4226),
+                          label: isBn ? 'সময়' : 'Hours',
+                          value: d.availableHours!),
+                    ],
+                    if (d.availableDays.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.calendar_today_rounded,
+                                size: 15,
+                                color: AppTheme.textPrimary
+                                    .withValues(alpha: 0.45)),
+                            const SizedBox(width: 8),
+                            Expanded(
                                 child: Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: d.availableDays.map((day) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primaryGreen
-                                            .withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: d.availableDays
+                                  .map((day) => Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
                                           color: AppTheme.primaryGreen
-                                              .withValues(alpha: 0.2),
+                                              .withValues(alpha: 0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                              color: AppTheme.primaryGreen
+                                                  .withValues(alpha: 0.2)),
                                         ),
-                                      ),
-                                      child: Text(
-                                        widget.dayLabel(day, isBn),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.primaryGreen
-                                              .withValues(alpha: 0.85),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                                        child: Text(widget.dayLabel(day, isBn),
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppTheme.primaryGreen
+                                                    .withValues(alpha: 0.85))),
+                                      ))
+                                  .toList(),
+                            )),
+                          ]),
+                    ],
+                  ]),
+                ),
+              ]),
             ),
           ],
         ),
@@ -650,9 +557,7 @@ class _DoctorCardState extends State<_DoctorCard>
 
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     return name.substring(0, name.length.clamp(0, 2)).toUpperCase();
   }
 
@@ -665,88 +570,56 @@ class _DoctorCardState extends State<_DoctorCard>
   }
 }
 
-// ---------------------------------------------------------------------------
-// _InfoRow — labelled icon + value row
-// ---------------------------------------------------------------------------
-
 class _InfoRow extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String label;
   final String value;
-
-  const _InfoRow({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow(
+      {required this.icon,
+      required this.iconColor,
+      required this.label,
+      required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(icon, size: 15, color: iconColor),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
+    return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+      Icon(icon, size: 15, color: iconColor),
+      const SizedBox(width: 8),
+      Text('$label: ',
           style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary.withValues(alpha: 0.55),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
               fontSize: 13,
-              color: AppTheme.textPrimary,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary.withValues(alpha: 0.55))),
+      Expanded(
+          child: Text(value,
+              style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+              overflow: TextOverflow.ellipsis)),
+    ]);
   }
 }
-
-// ---------------------------------------------------------------------------
-// _NavItem
-// ---------------------------------------------------------------------------
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _NavItem(
+      {required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon,
-              size: 24, color: AppTheme.textPrimary.withValues(alpha: 0.45)),
-          const SizedBox(height: 3),
-          Text(
-            label,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon,
+            size: 24, color: AppTheme.textPrimary.withValues(alpha: 0.45)),
+        const SizedBox(height: 3),
+        Text(label,
             style: TextStyle(
-              fontSize: 11,
-              color: AppTheme.textPrimary.withValues(alpha: 0.45),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+                fontSize: 11,
+                color: AppTheme.textPrimary.withValues(alpha: 0.45),
+                fontWeight: FontWeight.w500)),
+      ]),
     );
   }
 }

@@ -7,6 +7,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../models/guidelines.dart';
 import '../../providers/guidelines_provider.dart';
+import '../../providers/lang_provider.dart';
+
+// guidelinesLangProvider now derives from langProvider — always mirrors the global toggle.
+// It's a Provider<bool> (read-only), not a StateProvider.
+final guidelinesLangProvider = Provider<bool>((ref) => ref.watch(langProvider));
 
 class GuidelinesScreen extends ConsumerStatefulWidget {
   const GuidelinesScreen({super.key});
@@ -30,6 +35,7 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // isBangla is now derived from the global langProvider via guidelinesLangProvider
     final isBangla = ref.watch(guidelinesLangProvider);
     final asyncGuidelines = ref.watch(fetchGuidelinesProvider);
 
@@ -44,26 +50,7 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
               fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          TextButton(
-            onPressed: () => ref
-                .read(guidelinesLangProvider.notifier)
-                .update((state) => !state),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                isBangla ? 'EN' : 'বাং',
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
+        // No language toggle — controlled globally from home screen
       ),
       body: Column(
         children: [
@@ -91,9 +78,7 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
                     backgroundColor: AppTheme.surfaceGreen,
                     checkmarkColor: Colors.white,
                     onSelected: (bool selected) {
-                      setState(() {
-                        _selectedCategory = cat['id']!;
-                      });
+                      setState(() => _selectedCategory = cat['id']!);
                     },
                   ),
                 );
@@ -114,8 +99,7 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
                 final filteredList = _selectedCategory == 'all'
                     ? data
                     : data
-                        .where(
-                            (element) => element.category == _selectedCategory)
+                        .where((e) => e.category == _selectedCategory)
                         .toList();
 
                 if (filteredList.isEmpty) {
@@ -141,25 +125,20 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
                   itemBuilder: (context, index) {
                     final crop = filteredList[index];
                     return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                CropDetailTabsScreen(crop: crop),
-                          ),
-                        );
-                      },
+                              builder: (context) =>
+                                  CropDetailTabsScreen(crop: crop))),
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            )
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3))
                           ],
                         ),
                         child: Column(
@@ -180,10 +159,9 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
                                     fit: BoxFit.cover,
                                     width: double.infinity,
                                     errorWidget: (c, e, o) => const Icon(
-                                      Icons.image_not_supported_outlined,
-                                      color: AppTheme.textHint,
-                                      size: 40,
-                                    ),
+                                        Icons.image_not_supported_outlined,
+                                        color: AppTheme.textHint,
+                                        size: 40),
                                   ),
                                 ),
                               ),
@@ -196,10 +174,9 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
                                   Text(
                                     isBangla ? crop.nameBn : crop.nameEn,
                                     style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: AppTheme.textPrimary,
-                                    ),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: AppTheme.textPrimary),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -216,7 +193,7 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
                                   ),
                                 ],
                               ),
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -284,18 +261,13 @@ class CropDetailTabsScreen extends ConsumerWidget {
       itemCount: sortedSteps.length,
       itemBuilder: (context, index) {
         final step = sortedSteps[index];
-
-        // Extract basic instructions
+        // ignore: dead_null_aware_expression
         final instructionsText = isBangla
             // ignore: dead_null_aware_expression
             ? (step.instructionsBn ?? '').trim()
             // ignore: dead_null_aware_expression
             : (step.instructionsEn ?? '').trim();
-
-        // Extract detailed blog content
         final rawBlogText = isBangla ? step.blogContentBn : step.blogContentEn;
-
-        // SMART FALLBACK: If blog content is null/empty, feed it the instructions text so it always displays
         final displayBlogText =
             (rawBlogText != null && rawBlogText.trim().isNotEmpty)
                 ? rawBlogText.trim()
@@ -312,31 +284,24 @@ class CropDetailTabsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: AppTheme.surfaceGreen,
-                      radius: 14,
-                      child: Text(
-                        '${step.stepOrder}',
+                Row(children: [
+                  CircleAvatar(
+                    backgroundColor: AppTheme.surfaceGreen,
+                    radius: 14,
+                    child: Text('${step.stepOrder}',
                         style: const TextStyle(
                             color: AppTheme.primaryGreen,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        isBangla ? step.titleBn : step.titleEn,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: AppTheme.textPrimary),
-                      ),
-                    ),
-                  ],
-                ),
+                            fontSize: 12)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Text(isBangla ? step.titleBn : step.titleEn,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: AppTheme.textPrimary))),
+                ]),
                 const Divider(height: 24, thickness: 0.8),
                 Text(
                   instructionsText.isNotEmpty
@@ -367,38 +332,30 @@ class CropDetailTabsScreen extends ConsumerWidget {
                           color: AppTheme.borderGrey.withValues(alpha: 0.5)),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
                             const Icon(Icons.menu_book_outlined,
                                 size: 18, color: AppTheme.primaryGreen),
                             const SizedBox(width: 6),
                             Text(
-                              isBangla
-                                  ? 'বিস্তারিত চাষ পদ্ধতি ব্লগ'
-                                  : 'Detailed Cultivation Blog',
+                                isBangla
+                                    ? 'বিস্তারিত চাষ পদ্ধতি ব্লগ'
+                                    : 'Detailed Cultivation Blog',
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryGreen)),
+                          ]),
+                          const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8.0),
+                              child: Divider(height: 1)),
+                          Text(displayBlogText,
                               style: const TextStyle(
                                   fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryGreen),
-                            ),
-                          ],
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.0),
-                          child: Divider(height: 1),
-                        ),
-                        Text(
-                          displayBlogText,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            height: 1.5,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
+                                  height: 1.5,
+                                  color: AppTheme.textPrimary)),
+                        ]),
                   ),
                 ],
               ],
@@ -422,25 +379,23 @@ class CropDetailTabsScreen extends ConsumerWidget {
       itemCount: crop.infections.length,
       itemBuilder: (context, index) {
         final virus = crop.infections[index];
-
+        // ignore: dead_null_aware_expression
         final symptomsText = isBangla
             // ignore: dead_null_aware_expression
             ? (virus.symptomsBn ?? '').trim()
             // ignore: dead_null_aware_expression
             : (virus.symptomsEn ?? '').trim();
-
+        // ignore: dead_null_aware_expression
         final remedyText = isBangla
             // ignore: dead_null_aware_expression
             ? (virus.remedyBn ?? '').trim()
             // ignore: dead_null_aware_expression
             : (virus.remedyEn ?? '').trim();
-
         final displaySymptoms = symptomsText.isNotEmpty
             ? symptomsText
             : (isBangla
                 ? 'কোনো লক্ষণ তথ্য পাওয়া যায়নি।'
                 : 'Symptom metrics not registered.');
-
         final displayRemedy = remedyText.isNotEmpty
             ? remedyText
             : (isBangla
@@ -455,55 +410,44 @@ class CropDetailTabsScreen extends ConsumerWidget {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.bug_report_outlined,
-                        color: AppTheme.errorRed, size: 22),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isBangla ? virus.nameBn : virus.nameEn,
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.bug_report_outlined,
+                    color: AppTheme.errorRed, size: 22),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(isBangla ? virus.nameBn : virus.nameEn,
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: AppTheme.errorRed),
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 24, thickness: 0.8),
-                Text(
-                  isBangla ? 'লক্ষণ সমূহ:' : 'Symptoms:',
+                            color: AppTheme.errorRed))),
+              ]),
+              const Divider(height: 24, thickness: 0.8),
+              Text(isBangla ? 'লক্ষণ সমূহ:' : 'Symptoms:',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
-                      color: AppTheme.textPrimary),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  displaySymptoms,
+                      color: AppTheme.textPrimary)),
+              const SizedBox(height: 6),
+              Text(displaySymptoms,
                   style: const TextStyle(
-                      fontSize: 13, height: 1.5, color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isBangla ? 'প্রতিকার চিকিৎসা:' : 'Remedy Actions:',
+                      fontSize: 13,
+                      height: 1.5,
+                      color: AppTheme.textSecondary)),
+              const SizedBox(height: 16),
+              Text(isBangla ? 'প্রতিকার চিকিৎসা:' : 'Remedy Actions:',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
-                      color: AppTheme.successGreen),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  displayRemedy,
+                      color: AppTheme.successGreen)),
+              const SizedBox(height: 6),
+              Text(displayRemedy,
                   style: const TextStyle(
-                      fontSize: 13, height: 1.5, color: AppTheme.textSecondary),
-                ),
-              ],
-            ),
+                      fontSize: 13,
+                      height: 1.5,
+                      color: AppTheme.textSecondary)),
+            ]),
           ),
         );
       },
@@ -529,15 +473,14 @@ class _YouTubeEmbeddedPlayerState extends State<YouTubeEmbeddedPlayer> {
     _controller = YoutubePlayerController(
       initialVideoId: widget.videoId,
       flags: const YoutubePlayerFlags(
-        autoPlay: false,
-        mute: false,
-        disableDragSeek: false,
-        loop: false,
-        isLive: false,
-        forceHD: false,
-        enableCaption: true,
-        useHybridComposition: true,
-      ),
+          autoPlay: false,
+          mute: false,
+          disableDragSeek: false,
+          loop: false,
+          isLive: false,
+          forceHD: false,
+          enableCaption: true,
+          useHybridComposition: true),
     )..addListener(_videoPlayerListener);
   }
 
@@ -545,18 +488,15 @@ class _YouTubeEmbeddedPlayerState extends State<YouTubeEmbeddedPlayer> {
     if ((_controller.value.errorCode == 150 ||
             _controller.value.errorCode == 101) &&
         !_hasEmbeddingError) {
-      setState(() {
-        _hasEmbeddingError = true;
-      });
+      setState(() => _hasEmbeddingError = true);
     }
   }
 
   Future<void> _launchExternalVideo() async {
     final Uri url =
         Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}');
-    if (await canLaunchUrl(url)) {
+    if (await canLaunchUrl(url))
       await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
   }
 
   @override
@@ -578,32 +518,30 @@ class _YouTubeEmbeddedPlayerState extends State<YouTubeEmbeddedPlayer> {
               width: double.infinity,
               alignment: Alignment.center,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.play_circle_outline,
-                      color: Colors.white, size: 36),
-                  const SizedBox(height: 8),
-                  Text(
-                    _controller.value.errorCode == 150
-                        ? 'নিরাপত্তা সীমাবদ্ধতার কারণে ভিডিওটি অ্যাপে প্লে করা সম্ভব নয়।'
-                        : 'ভিডিওটি সরাসরি দেখতে নিচের বাটনে চাপুন',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.play_circle_outline,
+                        color: Colors.white, size: 36),
+                    const SizedBox(height: 8),
+                    Text(
+                      _controller.value.errorCode == 150
+                          ? 'নিরাপত্তা সীমাবদ্ধতার কারণে ভিডিওটি অ্যাপে প্লে করা সম্ভব নয়।'
+                          : 'ভিডিওটি সরাসরি দেখতে নিচের বাটনে চাপুন',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
-                    onPressed: _launchExternalVideo,
-                    icon: const Icon(Icons.open_in_new, size: 16),
-                    label: const Text('Watch on YouTube',
-                        style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white),
+                      onPressed: _launchExternalVideo,
+                      icon: const Icon(Icons.open_in_new, size: 16),
+                      label: const Text('Watch on YouTube',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ]),
             )
           : Container(
               color: Colors.black,
@@ -612,9 +550,8 @@ class _YouTubeEmbeddedPlayerState extends State<YouTubeEmbeddedPlayer> {
                 showVideoProgressIndicator: true,
                 progressIndicatorColor: AppTheme.primaryGreen,
                 progressColors: const ProgressBarColors(
-                  playedColor: AppTheme.primaryGreen,
-                  handleColor: AppTheme.warningAmber,
-                ),
+                    playedColor: AppTheme.primaryGreen,
+                    handleColor: AppTheme.warningAmber),
               ),
             ),
     );

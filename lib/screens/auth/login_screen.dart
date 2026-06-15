@@ -169,12 +169,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 child: Row(
                   children: [
                     _ToggleButton(
-                      label: '📱  ফোন',
+                      label: 'ফোন',
+                      icon: Icons.phone_outlined,
                       active: _usePhone,
                       onTap: () => _toggleMethod(true),
                     ),
                     _ToggleButton(
-                      label: '✉️  ইমেইল',
+                      label: 'ইমেইল',
+                      icon: Icons.email_outlined,
                       active: !_usePhone,
                       onTap: () => _toggleMethod(false),
                     ),
@@ -340,11 +342,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
 class _ToggleButton extends StatelessWidget {
   final String label;
+  final IconData icon;
   final bool active;
   final VoidCallback onTap;
 
   const _ToggleButton({
     required this.label,
+    required this.icon,
     required this.active,
     required this.onTap,
   });
@@ -370,14 +374,24 @@ class _ToggleButton extends StatelessWidget {
                   ]
                 : [],
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-              color: active ? AppTheme.primaryGreen : Colors.grey,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: active ? AppTheme.primaryGreen : Colors.grey,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  color: active ? AppTheme.primaryGreen : Colors.grey,
+                ),
+              ),
+            ],
           ),
         ),
       ),
