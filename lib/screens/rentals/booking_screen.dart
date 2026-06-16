@@ -1,7 +1,4 @@
 // lib/screens/rentals/booking_screen.dart
-//
-// Equipment booking screen — full bilingual support + Google Maps location.
-// Receives [bn] from RentalsScreen so the language matches the parent.
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -18,15 +15,7 @@ import '../../services/supabase_service.dart';
 import '../../services/payment_service.dart';
 import '../payment/bkash_webview_screen.dart';
 
-// ---------------------------------------------------------------------------
-// Bilingual helper
-// ---------------------------------------------------------------------------
-
 String _t(bool bn, String bangla, String english) => bn ? bangla : english;
-
-// ---------------------------------------------------------------------------
-// Geocoding (same logic as rentals_screen)
-// ---------------------------------------------------------------------------
 
 Future<LatLng?> _geocodeLocation(String query) async {
   try {
@@ -46,7 +35,6 @@ Future<LatLng?> _geocodeLocation(String query) async {
   }
 }
 
-// Division centre fallbacks
 const _kDivisionCoords = {
   'ঢাকা': LatLng(23.8103, 90.4125),
   'চট্টগ্রাম': LatLng(22.3569, 91.7832),
@@ -65,6 +53,28 @@ const _kDivisionCoords = {
   'Rangpur': LatLng(25.7439, 89.2752),
   'Mymensingh': LatLng(24.7471, 90.4203),
 };
+
+// Shared payment option definition — matches payment_screen style exactly
+const _kPaymentOptions = [
+  (
+    id: 'bkash',
+    label: 'বিকাশ',
+    labelEn: 'bKash',
+    subtitle: 'মোবাইল ব্যাংকিং',
+    subtitleEn: 'Mobile Banking',
+    icon: Icons.phone_android_rounded,
+    color: Color(0xFFE2136E),
+  ),
+  (
+    id: 'cash',
+    label: 'নগদ অর্থ',
+    labelEn: 'Cash on Delivery',
+    subtitle: 'সরঞ্জাম পেলে পরিশোধ',
+    subtitleEn: 'Pay on equipment handover',
+    icon: Icons.payments_outlined,
+    color: Color(0xFF2E7D32),
+  ),
+];
 
 // ===========================================================================
 // BOOKING SCREEN
@@ -88,7 +98,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   final _notesController = TextEditingController();
-  String? _paymentMethod = 'bkash';
+  String _selectedPayment = 'bkash';
   bool _isLoading = false;
 
   List<BookingModel> _existingBookings = [];
@@ -191,13 +201,11 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       } else {
         if (_startDate != null && _rangeOverlapsBooking(_startDate!, picked)) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-              _t(
-                bn,
-                'নির্বাচিত পরিসরে বুকড তারিখ রয়েছে। অনুগ্রহ করে আবার নির্বাচন করুন।',
-                'Your selected range includes already-booked dates. Please choose again.',
-              ),
-            ),
+            content: Text(_t(
+              bn,
+              'নির্বাচিত পরিসরে বুকড তারিখ রয়েছে। অনুগ্রহ করে আবার নির্বাচন করুন।',
+              'Your selected range includes already-booked dates. Please choose again.',
+            )),
             backgroundColor: AppTheme.errorRed,
           ));
           return;
@@ -208,13 +216,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Main confirm handler — routes to bKash or direct based on payment method
+  // Main confirm handler
   // -------------------------------------------------------------------------
 
   Future<void> _confirmBooking() async {
     if (!_canBook) return;
-
-    if (_paymentMethod == 'bkash') {
+    if (_selectedPayment == 'bkash') {
       await _confirmWithBkash();
     } else {
       await _confirmDirect();
@@ -222,18 +229,16 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // bKash flow: initiate → WebView → execute → placeBooking with trxId
+  // bKash flow
   // -------------------------------------------------------------------------
 
   Future<void> _confirmWithBkash() async {
     setState(() => _isLoading = true);
 
-    // Capture nav/messenger before any await gap
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      // Step 1: Grant token + create payment
       final invoiceNo = BkashPaymentService.generateInvoiceNumber('RNT');
       final paymentResult = await BkashPaymentService().initiate(
         amount: _totalCost,
@@ -242,7 +247,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
       setState(() => _isLoading = false);
 
-      // Step 2: Open bKash WebView — returns trxId or null
       final trxId = await nav.push<String>(
         MaterialPageRoute(
           builder: (_) => BkashWebViewScreen(
@@ -253,10 +257,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         ),
       );
 
-      // User cancelled or payment failed
       if (trxId == null) return;
 
-      // Step 3: Place booking in Supabase with trxId
       setState(() => _isLoading = true);
 
       // ignore: unused_local_variable
@@ -289,7 +291,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Cash
+  // Cash flow
   // -------------------------------------------------------------------------
 
   Future<void> _confirmDirect() async {
@@ -303,7 +305,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
-        paymentMethod: _paymentMethod,
+        paymentMethod: _selectedPayment,
       );
       ref.invalidate(myBookingsProvider);
       if (!mounted) return;
@@ -320,11 +322,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Success dialog — shows trxId if bKash was used
+  // Success dialog
   // -------------------------------------------------------------------------
 
   void _showSuccessDialog({String? trxId}) {
-    // Capture nav before async context
     final nav = Navigator.of(context);
 
     showDialog(
@@ -352,7 +353,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       '${_dateFmt.format(_startDate!)} — ${_dateFmt.format(_endDate!)}\n'
                       'Total: ${_currencyFmt.format(_totalCost)}',
             ),
-            // Show bKash transaction ID if available
             if (trxId != null) ...[
               const SizedBox(height: 12),
               Container(
@@ -397,8 +397,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              nav.pop(); // close dialog
-              nav.pop(); // go back to rentals
+              nav.pop();
+              nav.pop();
             },
             child: Text(
               _t(bn, 'ঠিক আছে', 'OK'),
@@ -427,8 +427,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedOption =
+        _kPaymentOptions.firstWhere((o) => o.id == _selectedPayment);
+    final buttonColor = selectedOption.color;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F7F5),
       appBar: AppBar(
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
@@ -443,7 +447,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Equipment summary + map button
+            // Equipment summary card
             _EquipmentSummaryCard(
               equipment: eq,
               bn: bn,
@@ -521,14 +525,121 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Payment method
-            _SectionHeader(title: _t(bn, 'পেমেন্ট পদ্ধতি', 'Payment Method')),
-            const SizedBox(height: 8),
-            _PaymentMethodSelector(
-              selected: _paymentMethod,
-              bn: bn,
-              onChanged: (v) => setState(() => _paymentMethod = v),
+            // Payment method — now matches payment_screen animated card style
+            _buildCard(
+              title: _t(bn, 'পেমেন্ট পদ্ধতি', 'Payment Method'),
+              child: Column(
+                children: _kPaymentOptions.map((option) {
+                  final isSelected = _selectedPayment == option.id;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedPayment = option.id),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? option.color.withValues(alpha: 0.06)
+                            : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              isSelected ? option.color : Colors.grey.shade200,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: option.color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(option.icon,
+                                color: option.color, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  bn ? option.label : option.labelEn,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: isSelected
+                                        ? option.color
+                                        : const Color(0xFF1A1A1A),
+                                  ),
+                                ),
+                                Text(
+                                  bn ? option.subtitle : option.subtitleEn,
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? option.color
+                                    : Colors.grey.shade400,
+                                width: 2,
+                              ),
+                              color: isSelected
+                                  ? option.color
+                                  : Colors.transparent,
+                            ),
+                            child: isSelected
+                                ? const Icon(Icons.check,
+                                    color: Colors.white, size: 12)
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
+
+            // bKash sandbox hint
+            if (_selectedPayment == 'bkash') ...[
+              const SizedBox(height: 12),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border:
+                      Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 15, color: Colors.amber),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'স্যান্ডবক্স: ওয়ালেট 01770618575 · PIN 12121 · OTP 123456',
+                        style: TextStyle(fontSize: 11, color: Colors.amber),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 20),
 
             // Notes
@@ -563,21 +674,16 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             ),
             const SizedBox(height: 32),
 
-            // Confirm button
+            // Confirm button — color matches selected payment
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: 54,
               child: ElevatedButton(
                 onPressed: (_canBook && !_isLoading) ? _confirmBooking : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _paymentMethod == 'bkash'
-                      ? const Color(0xFFE2136E)
-                      : AppTheme.primaryGreen,
+                  backgroundColor: buttonColor,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: (_paymentMethod == 'bkash'
-                          ? const Color(0xFFE2136E)
-                          : AppTheme.primaryGreen)
-                      .withValues(alpha: 0.4),
+                  disabledBackgroundColor: buttonColor.withValues(alpha: 0.4),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
@@ -591,7 +697,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       )
                     : Text(
                         _canBook
-                            ? (_paymentMethod == 'bkash'
+                            ? (_selectedPayment == 'bkash'
                                 ? '${_t(bn, "বিকাশে পেমেন্ট করুন", "Pay with bKash")} — ${_currencyFmt.format(_totalCost)}'
                                 : '${_t(bn, "বুকিং নিশ্চিত করুন", "Confirm Booking")} — ${_currencyFmt.format(_totalCost)}')
                             : _t(bn, 'তারিখ নির্বাচন করুন', 'Select Dates'),
@@ -603,6 +709,35 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCard({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A))),
+          const SizedBox(height: 14),
+          child,
+        ],
       ),
     );
   }
@@ -809,7 +944,7 @@ class _EquipmentMapSheetState extends State<_EquipmentMapSheet> {
 }
 
 // ===========================================================================
-// SUB-WIDGETS (unchanged from original)
+// SUB-WIDGETS (unchanged)
 // ===========================================================================
 
 class _SectionHeader extends StatelessWidget {
@@ -899,17 +1034,13 @@ class _EquipmentSummaryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      equipment.name,
-                      style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w700),
-                    ),
+                    Text(equipment.name,
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    Text(
-                      _typeLabel(equipment.type),
-                      style: const TextStyle(
-                          fontSize: 13, color: AppTheme.textSecondary),
-                    ),
+                    Text(_typeLabel(equipment.type),
+                        style: const TextStyle(
+                            fontSize: 13, color: AppTheme.textSecondary)),
                     if (equipment.locationText != null) ...[
                       const SizedBox(height: 4),
                       Row(children: [
@@ -933,11 +1064,9 @@ class _EquipmentSummaryCard extends StatelessWidget {
                         const Icon(Icons.phone,
                             size: 13, color: AppTheme.textSecondary),
                         const SizedBox(width: 2),
-                        Text(
-                          equipment.ownerPhone!,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.textSecondary),
-                        ),
+                        Text(equipment.ownerPhone!,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppTheme.textSecondary)),
                       ]),
                     ],
                   ],
@@ -954,11 +1083,9 @@ class _EquipmentSummaryCard extends StatelessWidget {
                       color: AppTheme.primaryGreen,
                     ),
                   ),
-                  Text(
-                    _t(bn, '/দিন', '/day'),
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.textSecondary),
-                  ),
+                  Text(_t(bn, '/দিন', '/day'),
+                      style: const TextStyle(
+                          fontSize: 12, color: AppTheme.textSecondary)),
                 ],
               ),
             ],
@@ -1147,23 +1274,19 @@ class _DatePickerTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            Text(label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w500,
+                )),
             const SizedBox(height: 6),
             Row(children: [
-              Icon(
-                Icons.calendar_today,
-                size: 15,
-                color: date != null
-                    ? AppTheme.primaryGreen
-                    : AppTheme.textSecondary,
-              ),
+              Icon(Icons.calendar_today,
+                  size: 15,
+                  color: date != null
+                      ? AppTheme.primaryGreen
+                      : AppTheme.textSecondary),
               const SizedBox(width: 6),
               Text(
                 date != null ? _fmt.format(date!) : placeholder,
@@ -1272,89 +1395,6 @@ class _CostRow extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _PaymentMethodSelector extends StatelessWidget {
-  final String? selected;
-  final bool bn;
-  final ValueChanged<String?> onChanged;
-
-  const _PaymentMethodSelector({
-    required this.selected,
-    required this.bn,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final methods = [
-      {'value': 'bkash', 'label': 'bKash', 'labelBn': 'বিকাশ', 'icon': '💳'},
-      {
-        'value': 'cash',
-        'label': 'Cash on Delivery',
-        'labelBn': 'নগদ অর্থ',
-        'icon': '💵'
-      },
-    ];
-
-    return Column(
-      children: methods.map((m) {
-        final isSelected = selected == m['value'];
-        final isBkash = m['value'] == 'bkash';
-        final activeColor =
-            isBkash ? const Color(0xFFE2136E) : AppTheme.primaryGreen;
-        return GestureDetector(
-          onTap: () => onChanged(m['value'] as String),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? activeColor.withValues(alpha: 0.08)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? activeColor : AppTheme.borderGrey,
-                width: isSelected ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(m['icon']!, style: const TextStyle(fontSize: 20)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        bn ? m['labelBn']! : m['label']!,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.normal,
-                          color:
-                              isSelected ? activeColor : AppTheme.textPrimary,
-                        ),
-                      ),
-                      if (isBkash)
-                        Text(
-                          _t(bn, 'বিকাশ পেমেন্ট গেটওয়ে',
-                              'Secure bKash payment'),
-                          style: const TextStyle(
-                              fontSize: 11, color: AppTheme.textSecondary),
-                        ),
-                    ],
-                  ),
-                ),
-                if (isSelected)
-                  Icon(Icons.check_circle, color: activeColor, size: 20),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 }

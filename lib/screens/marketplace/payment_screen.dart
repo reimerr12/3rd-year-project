@@ -19,6 +19,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   final _addressController = TextEditingController();
   bool _isPlacing = false;
 
+  // SSLCommerz removed
   static const _paymentOptions = [
     (
       id: 'bkash',
@@ -26,13 +27,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       subtitle: 'মোবাইল ব্যাংকিং',
       icon: Icons.phone_android_rounded,
       color: Color(0xFFE2136E),
-    ),
-    (
-      id: 'sslcommerz',
-      label: 'SSLCommerz',
-      subtitle: 'কার্ড / নেট ব্যাংকিং',
-      icon: Icons.credit_card_rounded,
-      color: Color(0xFF1565C0),
     ),
     (
       id: 'cash',
@@ -48,10 +42,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     _addressController.dispose();
     super.dispose();
   }
-
-  // -------------------------------------------------------------------------
-  // Main handler — routes to bKash or direct
-  // -------------------------------------------------------------------------
 
   Future<void> _confirmOrder() async {
     if (_addressController.text.trim().isEmpty) {
@@ -72,26 +62,20 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // bKash: initiate → WebView → execute → placeOrders with trxId
-  // -------------------------------------------------------------------------
-
   Future<void> _confirmWithBkash() async {
     final cart = ref.read(marketplaceProvider).cart;
     if (cart.isEmpty) return;
 
     final total =
         cart.fold<double>(0, (sum, e) => sum + e.product.price * e.quantity) +
-            60.0; // delivery fee
+            60.0;
 
     setState(() => _isPlacing = true);
 
-    // Capture nav/messenger before any await gap
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      // Step 1: Grant token + create payment
       final invoiceNo = BkashPaymentService.generateInvoiceNumber('MKT');
       final paymentResult = await BkashPaymentService().initiate(
         amount: total,
@@ -100,20 +84,18 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
       setState(() => _isPlacing = false);
 
-      // Step 2: Open bKash WebView — returns trxId or null on cancel/failure
       final trxId = await nav.push<String>(
         MaterialPageRoute(
           builder: (_) => BkashWebViewScreen(
             bkashUrl: paymentResult.bkashUrl,
             paymentId: paymentResult.paymentId,
-            bn: true, // payment screen is currently BN-only
+            bn: true,
           ),
         ),
       );
 
-      if (trxId == null) return; // user cancelled or payment failed
+      if (trxId == null) return;
 
-      // Step 3: Place orders in Supabase with trxId
       setState(() => _isPlacing = true);
 
       final placedOrders =
@@ -142,10 +124,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       );
     }
   }
-
-  // -------------------------------------------------------------------------
-  // Cash / SSLCommerz — direct, no gateway
-  // -------------------------------------------------------------------------
 
   Future<void> _confirmDirect() async {
     setState(() => _isPlacing = true);
@@ -188,7 +166,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     const deliveryFee = 60.0;
     final total = subtotal + deliveryFee;
 
-    // Button color matches selected payment method
     final selectedOption =
         _paymentOptions.firstWhere((o) => o.id == _selectedPayment);
     final buttonColor = selectedOption.color;
@@ -386,8 +363,6 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               }).toList(),
             ),
           ),
-
-          // Sandbox hint — only shown when bKash selected
           if (_selectedPayment == 'bkash') ...[
             const SizedBox(height: 12),
             Container(
@@ -411,14 +386,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               ),
             ),
           ],
-
           const SizedBox(height: 28),
           SizedBox(
             height: 54,
             child: ElevatedButton(
               onPressed: _isPlacing ? null : _confirmOrder,
               style: ElevatedButton.styleFrom(
-                // Button color matches selected payment method
                 backgroundColor: buttonColor,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.grey.shade300,

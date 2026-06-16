@@ -102,7 +102,7 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                         ref.invalidate(_doctorsListProvider(selectedDivision));
                       },
                       child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                         itemCount: doctors.length,
                         itemBuilder: (context, index) => _DoctorCard(
                           doctor: doctors[index],
@@ -116,7 +116,6 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context, bn),
     );
   }
 
@@ -134,7 +133,6 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
         style: const TextStyle(
             fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
       ),
-      // No language toggle — controlled globally from home screen
     );
   }
 
@@ -269,48 +267,6 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen> {
                 fontWeight: FontWeight.w500),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context, bool bn) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, -2))
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                  icon: Icons.home_rounded,
-                  label: bn ? 'হোম' : 'Home',
-                  onTap: () => Navigator.of(context)
-                      .pushReplacementNamed(AppRouter.home)),
-              _NavItem(
-                  icon: Icons.storefront_rounded,
-                  label: bn ? 'বাজার' : 'Market',
-                  onTap: () {}),
-              _NavItem(
-                  icon: Icons.chat_bubble_rounded,
-                  label: bn ? 'বার্তা' : 'Chat',
-                  onTap: () {}),
-              _NavItem(
-                  icon: Icons.person_rounded,
-                  label: bn ? 'প্রোফাইল' : 'Profile',
-                  onTap: () {}),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -557,7 +513,9 @@ class _DoctorCardState extends State<_DoctorCard>
 
   String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
     return name.substring(0, name.length.clamp(0, 2)).toUpperCase();
   }
 
@@ -596,30 +554,5 @@ class _InfoRow extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
               overflow: TextOverflow.ellipsis)),
     ]);
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _NavItem(
-      {required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon,
-            size: 24, color: AppTheme.textPrimary.withValues(alpha: 0.45)),
-        const SizedBox(height: 3),
-        Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: AppTheme.textPrimary.withValues(alpha: 0.45),
-                fontWeight: FontWeight.w500)),
-      ]),
-    );
   }
 }
