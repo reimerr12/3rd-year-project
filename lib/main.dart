@@ -16,8 +16,6 @@ Future<void> main() async {
 
   await initializeDateFormatting('bn', null);
 
-  // await Firebase.initializeApp();
-
   runApp(const ProviderScope(child: KrishokApp()));
 }
 

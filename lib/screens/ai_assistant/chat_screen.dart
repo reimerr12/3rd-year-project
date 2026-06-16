@@ -8,7 +8,7 @@ import '../../services/ai_service.dart';
 // Providers
 // ---------------------------------------------------------------------------
 
-final chatLangProvider = StateProvider<bool>((ref) => true); // true = Bengali
+final chatLangProvider = StateProvider<bool>((ref) => true);
 
 final chatMessagesProvider = StateProvider<List<ChatMessage>>((ref) => []);
 
@@ -208,16 +208,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildEmptyState(bool inBengali) {
     final suggestions = inBengali
         ? [
-            '🌾 ধানের ব্লাস্ট রোগের প্রতিকার কী?',
-            '🍅 টমেটোতে পোকা দমনের উপায়?',
-            '💧 সেচের সঠিক সময় কখন?',
-            '🌱 মাটি পরীক্ষার গুরুত্ব কী?',
+            'ধানের ব্লাস্ট রোগের প্রতিকার কী?',
+            'টমেটোতে পোকা দমনের উপায়?',
+            'সেচের সঠিক সময় কখন?',
+            'মাটি পরীক্ষার গুরুত্ব কী?',
           ]
         : [
-            '🌾 How to treat rice blast disease?',
-            '🍅 How to control pests on tomato?',
-            '💧 When is the best time to irrigate?',
-            '🌱 Why is soil testing important?',
+            'How to treat rice blast disease?',
+            'How to control pests on tomato?',
+            'When is the best time to irrigate?',
+            'Why is soil testing important?',
           ];
 
     return SingleChildScrollView(

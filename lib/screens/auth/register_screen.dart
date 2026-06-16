@@ -55,7 +55,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       final service = SupabaseService();
 
-      // Phone users are farmers by default, email users are customers
       final role = (_args.containsKey('phone')) ? 'farmer' : 'customer';
       await service.createProfile(name: name, role: role);
 

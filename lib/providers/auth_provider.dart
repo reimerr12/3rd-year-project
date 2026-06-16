@@ -50,11 +50,8 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     await _authSub?.cancel();
 
-    // Listen to Supabase auth state changes (sign-in, sign-out, token refresh).
-    // Only act on events AFTER build() has completed its own fetch — otherwise
-    // the listener races with _resolveCurrentUser() and can overwrite good data.
     _authSub = _service.authStateChanges.listen((user) {
-      if (!_buildComplete) return; // build() will handle the initial state
+      if (!_buildComplete) return;
       if (user != null) {
         state = AsyncData(AuthState.authenticated(user));
       } else {
@@ -63,7 +60,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     });
 
     final resolved = await _resolveCurrentUser();
-    _buildComplete = true; // from here on, stream listener may update state
+    _buildComplete = true;
     return resolved;
   }
 
@@ -77,9 +74,6 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     }
   }
 
-  /// Call this after OTP verification + profile creation to force a re-fetch.
-  /// Supabase auth state changes fire asynchronously and may lag behind the
-  /// DB trigger that creates the profile row — refresh() guarantees fresh data.
   Future<void> refresh() async {
     state = const AsyncLoading();
     final resolved = await _resolveCurrentUser();
@@ -89,9 +83,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   Future<void> signOut() async {
     try {
       await _service.signOut();
-    } catch (_) {
-      // Treat as signed out regardless
-    }
+    } catch (_) {}
     state = const AsyncData(AuthState.unauthenticated());
   }
 }

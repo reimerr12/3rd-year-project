@@ -76,12 +76,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           );
         }
       } else {
-        final email = _emailController.text.trim();
+        final email = _emailController.text.trim().toLowerCase();
         if (email.isEmpty) {
           setState(() => _errorMessage = 'ইমেইল দিন');
           return;
         }
-        if (!email.contains('@')) {
+        final emailRegex = RegExp(r'^[a-z0-9._]+@[a-z0-9.-]+\.[a-z]{2,}$');
+        if (!emailRegex.hasMatch(email)) {
           setState(() => _errorMessage = 'সঠিক ইমেইল দিন');
           return;
         }
