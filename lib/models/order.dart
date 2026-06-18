@@ -5,8 +5,8 @@ class Order {
   final String productId;
   final int quantity;
   final double total;
-  final String status; // pending,confirmed,shipped,delivered,cancelled
-  final String? paymentMethod; // bkash,sslcommerz,cash
+  final String status;
+  final String? paymentMethod;
   final String? deliveryAddress;
   final String? notes;
   final DateTime? paidAt;

@@ -3,15 +3,52 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../providers/lang_provider.dart';
 import '../../providers/marketplace_provider.dart';
 
-const _statusTabs = [
-  ('all', 'সব'),
-  ('pending', 'অপেক্ষমাণ'),
-  ('confirmed', 'নিশ্চিত'),
-  ('shipped', 'পাঠানো'),
-  ('delivered', 'পৌঁছানো'),
-  ('cancelled', 'বাতিল'),
+String _t(bool bn, String bangla, String english) => bn ? bangla : english;
+
+String _price(bool bn, double amount) =>
+    bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
+
+// Status label helper — English equivalent of OrderEntry.statusBn
+String _statusLabel(String status, bool bn) {
+  switch (status) {
+    case 'pending':
+      return _t(bn, 'অপেক্ষমাণ', 'Pending');
+    case 'confirmed':
+      return _t(bn, 'নিশ্চিত', 'Confirmed');
+    case 'shipped':
+      return _t(bn, 'পাঠানো হয়েছে', 'Shipped');
+    case 'delivered':
+      return _t(bn, 'পৌঁছে গেছে', 'Delivered');
+    case 'cancelled':
+      return _t(bn, 'বাতিল', 'Cancelled');
+    default:
+      return status;
+  }
+}
+
+String _paymentLabel(String method, bool bn) {
+  switch (method) {
+    case 'bkash':
+      return 'bKash';
+    case 'sslcommerz':
+      return 'SSLCommerz';
+    case 'cash':
+      return _t(bn, 'ক্যাশ অন ডেলিভারি', 'Cash on Delivery');
+    default:
+      return method;
+  }
+}
+
+final _statusTabs = [
+  ('all', 'সব', 'All'),
+  ('pending', 'অপেক্ষমাণ', 'Pending'),
+  ('confirmed', 'নিশ্চিত', 'Confirmed'),
+  ('shipped', 'পাঠানো', 'Shipped'),
+  ('delivered', 'পৌঁছানো', 'Delivered'),
+  ('cancelled', 'বাতিল', 'Cancelled'),
 ];
 
 class OrdersScreen extends ConsumerStatefulWidget {
@@ -32,6 +69,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
     final state = ref.watch(marketplaceProvider);
     final notifier = ref.read(marketplaceProvider.notifier);
     final orders = state.orders;
@@ -49,18 +87,20 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('আমার অর্ডার',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          _t(bn, 'আমার অর্ডার', 'My Orders'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: state.isOrdersLoading
           ? const Center(
               child: CircularProgressIndicator(color: AppTheme.primaryGreen))
           : Column(
               children: [
-                _buildStatusTabs(orders),
+                _buildStatusTabs(orders, bn),
                 Expanded(
                   child: filtered.isEmpty
-                      ? _buildEmpty(orders.isEmpty)
+                      ? _buildEmpty(orders.isEmpty, bn)
                       : RefreshIndicator(
                           color: AppTheme.primaryGreen,
                           onRefresh: () => notifier.loadOrders(),
@@ -71,6 +111,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                 const SizedBox(height: 12),
                             itemBuilder: (_, i) => _OrderCard(
                               order: filtered[i],
+                              bn: bn,
                               onCancel: () =>
                                   notifier.cancelOrder(filtered[i].id),
                               onDismiss: filtered[i].status == 'cancelled'
@@ -91,7 +132,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     );
   }
 
-  Widget _buildStatusTabs(List<OrderEntry> orders) {
+  Widget _buildStatusTabs(List<OrderEntry> orders, bool bn) {
     return Container(
       color: Colors.white,
       child: Column(
@@ -104,7 +145,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               itemCount: _statusTabs.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (_, i) {
-                final (key, label) = _statusTabs[i];
+                final (key, labelBn, labelEn) = _statusTabs[i];
                 final isSelected = _selectedStatus == key;
                 final count = key == 'all'
                     ? orders.length
@@ -129,16 +170,18 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(label,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.grey.shade700,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
-                              fontSize: 13,
-                            )),
+                        Text(
+                          bn ? labelBn : labelEn,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : Colors.grey.shade700,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                        ),
                         if (count > 0) ...[
                           const SizedBox(width: 5),
                           Container(
@@ -174,7 +217,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     );
   }
 
-  Widget _buildEmpty(bool noOrdersAtAll) {
+  Widget _buildEmpty(bool noOrdersAtAll, bool bn) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -184,14 +227,18 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
           const SizedBox(height: 16),
           Text(
             noOrdersAtAll
-                ? 'এখনো কোনো অর্ডার নেই'
-                : 'এই বিভাগে কোনো অর্ডার নেই',
+                ? _t(bn, 'এখনো কোনো অর্ডার নেই', 'No orders yet')
+                : _t(bn, 'এই বিভাগে কোনো অর্ডার নেই',
+                    'No orders in this category'),
             style: TextStyle(fontSize: 17, color: Colors.grey.shade500),
           ),
           if (noOrdersAtAll) ...[
             const SizedBox(height: 6),
-            Text('বাজার থেকে পণ্য কিনলে এখানে দেখা যাবে',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
+            Text(
+              _t(bn, 'বাজার থেকে পণ্য কিনলে এখানে দেখা যাবে',
+                  'Orders from the market will appear here'),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+            ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => Navigator.pushNamed(context, AppRouter.market),
@@ -201,7 +248,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('বাজারে যান'),
+              child: Text(_t(bn, 'বাজারে যান', 'Go to Market')),
             ),
           ],
         ],
@@ -213,12 +260,14 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
 // ── Order Card ─────────────────────────────────────────────────
 class _OrderCard extends StatelessWidget {
   final OrderEntry order;
+  final bool bn;
   final VoidCallback onCancel;
   final VoidCallback onReorder;
   final VoidCallback? onDismiss;
 
   const _OrderCard({
     required this.order,
+    required this.bn,
     required this.onCancel,
     required this.onReorder,
     this.onDismiss,
@@ -252,11 +301,13 @@ class _OrderCard extends StatelessWidget {
               children: [
                 Icon(order.statusIcon, color: order.statusColor, size: 16),
                 const SizedBox(width: 6),
-                Text(order.statusBn,
-                    style: TextStyle(
-                        color: order.statusColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13)),
+                Text(
+                  _statusLabel(order.status, bn),
+                  style: TextStyle(
+                      color: order.statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13),
+                ),
                 if (onDismiss == null) ...[
                   const Spacer(),
                   Text(_shortId(order.id),
@@ -273,7 +324,6 @@ class _OrderCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Thumbnail
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: order.product.primaryImage != null
@@ -303,7 +353,7 @@ class _OrderCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${order.quantity} ${order.product.unit} × ৳${order.product.price.toStringAsFixed(0)}',
+                        '${order.quantity} ${order.product.unit} × ${_price(bn, order.product.price)}',
                         style: TextStyle(
                             color: Colors.grey.shade600, fontSize: 13),
                       ),
@@ -315,7 +365,7 @@ class _OrderCard extends StatelessWidget {
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(
-                              _paymentLabel(order.paymentMethod),
+                              _paymentLabel(order.paymentMethod, bn),
                               style: TextStyle(
                                   color: Colors.grey.shade500, fontSize: 12),
                               overflow: TextOverflow.ellipsis,
@@ -343,7 +393,7 @@ class _OrderCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '৳${order.total.toStringAsFixed(0)}',
+                      _price(bn, order.total),
                       style: const TextStyle(
                           color: AppTheme.primaryGreen,
                           fontWeight: FontWeight.bold,
@@ -353,12 +403,13 @@ class _OrderCard extends StatelessWidget {
                     if (order.status == 'delivered' ||
                         order.status == 'cancelled')
                       _ActionButton(
-                          label: 'আবার কিনুন',
-                          color: AppTheme.primaryGreen,
-                          onTap: onReorder),
+                        label: _t(bn, 'আবার কিনুন', 'Buy Again'),
+                        color: AppTheme.primaryGreen,
+                        onTap: onReorder,
+                      ),
                     if (order.status == 'pending')
                       _ActionButton(
-                        label: 'বাতিল করুন',
+                        label: _t(bn, 'বাতিল করুন', 'Cancel'),
                         color: Colors.red.shade600,
                         borderColor: Colors.red.shade200,
                         bgColor: Colors.red.shade50,
@@ -370,7 +421,8 @@ class _OrderCard extends StatelessWidget {
             ),
           ),
 
-          if (order.status != 'cancelled') _buildProgressTracker(order.status),
+          if (order.status != 'cancelled')
+            _buildProgressTracker(order.status, bn),
         ],
       ),
     );
@@ -401,14 +453,25 @@ class _OrderCard extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('অর্ডার বাতিল করবেন?',
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('${order.product.title} এর অর্ডারটি বাতিল করতে চান?',
-            style: TextStyle(color: Colors.grey.shade700)),
+        title: Text(
+          _t(bn, 'অর্ডার বাতিল করবেন?', 'Cancel Order?'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          _t(
+            bn,
+            '${order.product.title} এর অর্ডারটি বাতিল করতে চান?',
+            'Do you want to cancel the order for ${order.product.title}?',
+          ),
+          style: TextStyle(color: Colors.grey.shade700),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('না', style: TextStyle(color: Colors.grey.shade600)),
+            child: Text(
+              _t(bn, 'না', 'No'),
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -421,16 +484,17 @@ class _OrderCard extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('হ্যাঁ, বাতিল করুন'),
+            child: Text(_t(bn, 'হ্যাঁ, বাতিল করুন', 'Yes, Cancel')),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProgressTracker(String status) {
+  Widget _buildProgressTracker(String status, bool bn) {
     const steps = ['pending', 'confirmed', 'shipped', 'delivered'];
-    const labels = ['অপেক্ষা', 'নিশ্চিত', 'পাঠানো', 'পৌঁছানো'];
+    final labelsBn = ['অপেক্ষা', 'নিশ্চিত', 'পাঠানো', 'পৌঁছানো'];
+    final labelsEn = ['Pending', 'Confirmed', 'Shipped', 'Delivered'];
     const icons = [
       Icons.hourglass_empty_rounded,
       Icons.check_circle_outline_rounded,
@@ -438,6 +502,7 @@ class _OrderCard extends StatelessWidget {
       Icons.done_all_rounded,
     ];
     final current = steps.indexOf(status);
+    final labels = bn ? labelsBn : labelsEn;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
@@ -521,19 +586,6 @@ class _OrderCard extends StatelessWidget {
     final clean = id.replaceAll('-', '');
     final suffix = clean.length > 6 ? clean.substring(clean.length - 6) : clean;
     return '#${suffix.toUpperCase()}';
-  }
-
-  String _paymentLabel(String method) {
-    switch (method) {
-      case 'bkash':
-        return 'বিকাশ';
-      case 'sslcommerz':
-        return 'SSLCommerz';
-      case 'cash':
-        return 'ক্যাশ অন ডেলিভারি';
-      default:
-        return method;
-    }
   }
 
   Widget _imgFallback() => Container(

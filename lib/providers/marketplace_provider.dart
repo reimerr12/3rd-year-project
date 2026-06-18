@@ -148,7 +148,7 @@ class MarketplaceState {
       );
 }
 
-// ── Notifier ───────────────────────────────────────────────────
+// ── Notifier ──────//
 class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
   MarketplaceNotifier() : super(const MarketplaceState()) {
     loadProducts();
@@ -156,7 +156,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
 
   final _service = SupabaseService();
 
-  // ── Products ───────────────────────────────────────────────
+  // ── Products ─────//
   Future<void> loadProducts({String? category}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -177,7 +177,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
 
   List<Product> get filteredProducts => state.products;
 
-  // ── Cart ───────────────────────────────────────────────────
+  // ── Cart ────//
   Future<void> loadCart() async {
     state = state.copyWith(isCartLoading: true);
     try {
@@ -264,7 +264,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     }
   }
 
-  // ── Orders ─────────────────────────────────────────────────
+  // ── Orders ─────//
   Future<void> loadOrders() async {
     state = state.copyWith(isOrdersLoading: true);
     try {
@@ -387,7 +387,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     await addToCart(order.product);
   }
 
-  // ── Sell: add new product ──────────────────────────────────
+  // ── Sell: add new product ─────────//
   Future<void> addProduct({
     required String title,
     String? description,
@@ -413,7 +413,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     }
   }
 
-  // ── My listings ────────────────────────────────────────────
+  // ── My listings ──────//
   int get cartCount => state.cart.fold(0, (sum, e) => sum + e.quantity);
 
   Future<List<Product>> fetchMyListings() async {
@@ -438,7 +438,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
         .fold<int>(0, (sum, o) => sum + o.quantity);
   }
 
-  // ── Convert ────────────────────────────────────────────────
+  // ── Convert ───────//
   Product _productFromModel(ProductModel m) {
     return Product(
       id: m.id,
@@ -457,7 +457,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
   }
 }
 
-// ── Provider ───────────────────────────────────────────────────
+// ── Provider ─────//
 final marketplaceProvider =
     StateNotifierProvider<MarketplaceNotifier, MarketplaceState>(
   (ref) => MarketplaceNotifier(),

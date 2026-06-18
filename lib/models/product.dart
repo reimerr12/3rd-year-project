@@ -3,7 +3,7 @@ class Product {
   final String sellerId;
   final String title;
   final String? description;
-  final String category; // 'crop','fertilizer','insecticide','tool','other'
+  final String category; //
   final double price;
   final String unit;
   final int stock;

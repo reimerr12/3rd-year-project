@@ -3,7 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../providers/lang_provider.dart';
 import '../../providers/marketplace_provider.dart';
+
+String _t(bool bn, String bangla, String english) => bn ? bangla : english;
+
+String _price(bool bn, double amount) =>
+    bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
+
+String _price2(bool bn, double amount) =>
+    bn ? '৳${amount.toStringAsFixed(2)}' : 'Taka ${amount.toStringAsFixed(2)}';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -21,6 +30,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
     final state = ref.watch(marketplaceProvider);
     final notifier = ref.read(marketplaceProvider.notifier);
     final cart = state.cart;
@@ -33,8 +43,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       appBar: AppBar(
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
-        title: const Text('আমার কার্ট',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          _t(bn, 'আমার কার্ট', 'My Cart'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -43,8 +55,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           if (cart.isNotEmpty)
             TextButton(
               onPressed: () => notifier.clearCart(),
-              child: const Text('সব মুছুন',
-                  style: TextStyle(color: Colors.white70, fontSize: 13)),
+              child: Text(
+                _t(bn, 'সব মুছুন', 'Clear All'),
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              ),
             ),
         ],
       ),
@@ -59,9 +73,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       Icon(Icons.shopping_cart_outlined,
                           size: 72, color: Colors.grey.shade300),
                       const SizedBox(height: 16),
-                      Text('কার্ট খালি আছে',
-                          style: TextStyle(
-                              fontSize: 18, color: Colors.grey.shade500)),
+                      Text(
+                        _t(bn, 'কার্ট খালি আছে', 'Your cart is empty'),
+                        style: TextStyle(
+                            fontSize: 18, color: Colors.grey.shade500),
+                      ),
                       const SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: () => Navigator.pop(context),
@@ -71,7 +87,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('পণ্য দেখুন'),
+                        child: Text(_t(bn, 'পণ্য দেখুন', 'Browse Products')),
                       ),
                     ],
                   ),
@@ -122,7 +138,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                           fontSize: 14)),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '৳${item.product.price.toStringAsFixed(0)} / ${item.product.unit}',
+                                    '${_price(bn, item.product.price)} / ${item.product.unit}',
                                     style: TextStyle(
                                         color: Colors.grey.shade600,
                                         fontSize: 12),
@@ -157,7 +173,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  '৳${(item.product.price * item.quantity).toStringAsFixed(0)}',
+                                  _price(
+                                      bn, item.product.price * item.quantity),
                                   style: const TextStyle(
                                       color: AppTheme.primaryGreen,
                                       fontWeight: FontWeight.bold,
@@ -198,11 +215,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('মোট',
-                          style: TextStyle(
-                              color: Colors.grey.shade600, fontSize: 13)),
                       Text(
-                        '৳${total.toStringAsFixed(2)}',
+                        _t(bn, 'মোট', 'Total'),
+                        style: TextStyle(
+                            color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                      Text(
+                        _price2(bn, total),
                         style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -222,9 +241,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: const Text('অর্ডার করুন',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        _t(bn, 'অর্ডার করুন', 'Place Order'),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],

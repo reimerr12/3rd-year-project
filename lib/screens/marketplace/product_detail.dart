@@ -4,7 +4,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/product.dart';
+import '../../providers/lang_provider.dart';
 import '../../providers/marketplace_provider.dart';
+
+String _t(bool bn, String bangla, String english) => bn ? bangla : english;
+
+String _price(bool bn, double amount) =>
+    bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
+
+String _categoryLabel(bool bn, String category) {
+  if (bn) {
+    switch (category) {
+      case 'crop':
+        return 'ফসল';
+      case 'fertilizer':
+        return 'সার';
+      case 'insecticide':
+        return 'কীটনাশক';
+      case 'tool':
+        return 'সরঞ্জাম';
+      default:
+        return 'অন্যান্য';
+    }
+  } else {
+    switch (category) {
+      case 'crop':
+        return 'Crops';
+      case 'fertilizer':
+        return 'Fertilizer';
+      case 'insecticide':
+        return 'Insecticide';
+      case 'tool':
+        return 'Tools';
+      default:
+        return 'Other';
+    }
+  }
+}
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   const ProductDetailScreen({super.key});
@@ -21,12 +57,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
     final product = ModalRoute.of(context)!.settings.arguments as Product?;
 
     if (product == null) {
       return Scaffold(
         appBar: AppBar(backgroundColor: AppTheme.primaryGreen),
-        body: const Center(child: Text('পণ্য পাওয়া যায়নি')),
+        body: Center(
+            child: Text(_t(bn, 'পণ্য পাওয়া যায়নি', 'Product not found'))),
       );
     }
 
@@ -39,11 +77,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         slivers: [
           _buildSliverAppBar(product, cartCount),
           SliverToBoxAdapter(
-            child: _buildBody(product, notifier),
+            child: _buildBody(product, notifier, bn),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomBar(product, notifier),
+      bottomNavigationBar: _buildBottomBar(product, notifier, bn),
     );
   }
 
@@ -110,7 +148,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     ),
                   )
                 : Container(color: Colors.grey.shade200),
-            // Gradient overlay
             Positioned(
               top: 0,
               left: 0,
@@ -129,7 +166,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ),
               ),
             ),
-            // Image dots (only if multiple images)
             if (product.images.length > 1)
               Positioned(
                 bottom: 12,
@@ -163,13 +199,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
-  Widget _buildBody(Product product, MarketplaceNotifier notifier) {
+  Widget _buildBody(Product product, MarketplaceNotifier notifier, bool bn) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Title row ────────────────────────────────────────
+          // ── Title row ─────────────────────────────────────────
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -192,7 +228,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  product.categoryBn,
+                  _categoryLabel(bn, product.category),
                   style: const TextStyle(
                     color: AppTheme.primaryGreen,
                     fontWeight: FontWeight.w600,
@@ -204,12 +240,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           const SizedBox(height: 12),
 
-          // ── Price ─────────────────────────────────────────────
+          // ── Price ──────────────────────────────────────────────
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '৳${product.price.toStringAsFixed(0)}',
+                _price(bn, product.price),
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -231,7 +267,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ── Info chips ────────────────────────────────────────
+          // ── Info chips ─────────────────────────────────────────
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -243,7 +279,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ),
               _InfoChip(
                 icon: Icons.inventory_2_outlined,
-                label: 'স্টক: ${product.stock} ${product.unit}',
+                label: _t(bn, 'স্টক: ${product.stock} ${product.unit}',
+                    'Stock: ${product.stock} ${product.unit}'),
                 color: product.inStock ? AppTheme.primaryGreen : Colors.red,
               ),
             ],
@@ -253,10 +290,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           Divider(color: Colors.grey.shade200),
           const SizedBox(height: 12),
 
-          // ── Description ───────────────────────────────────────
-          const Text(
-            'পণ্যের বিবরণ',
-            style: TextStyle(
+          // ── Description ────────────────────────────────────────
+          Text(
+            _t(bn, 'পণ্যের বিবরণ', 'Product Description'),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Color(0xFF1A1A1A),
@@ -264,7 +301,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            product.description ?? 'বিবরণ পাওয়া যায়নি।',
+            product.description ??
+                _t(bn, 'বিবরণ পাওয়া যায়নি।', 'No description available.'),
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade700,
@@ -273,10 +311,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── Quantity selector ─────────────────────────────────
-          const Text(
-            'পরিমাণ নির্বাচন করুন',
-            style: TextStyle(
+          // ── Quantity selector ──────────────────────────────────
+          Text(
+            _t(bn, 'পরিমাণ নির্বাচন করুন', 'Select Quantity'),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Color(0xFF1A1A1A),
@@ -310,7 +348,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
               const SizedBox(width: 16),
               Text(
-                'মোট: ৳${(product.price * _qty).toStringAsFixed(0)}',
+                '${_t(bn, 'মোট:', 'Total:')} ${_price(bn, product.price * _qty)}',
                 style: const TextStyle(
                   color: AppTheme.primaryGreen,
                   fontWeight: FontWeight.bold,
@@ -325,7 +363,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
-  Widget _buildBottomBar(Product product, MarketplaceNotifier notifier) {
+  Widget _buildBottomBar(
+      Product product, MarketplaceNotifier notifier, bool bn) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       decoration: BoxDecoration(
@@ -350,7 +389,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       setState(() => _addedToCart = true);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('${product.title} কার্টে যোগ হয়েছে'),
+                          content: Text(_t(
+                            bn,
+                            '${product.title} কার্টে যোগ হয়েছে',
+                            '${product.title} added to cart',
+                          )),
                           backgroundColor: AppTheme.primaryGreen,
                           behavior: SnackBarBehavior.floating,
                           duration: const Duration(seconds: 2),
@@ -372,7 +415,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     : Icons.add_shopping_cart_outlined,
                 size: 18,
               ),
-              label: Text(_addedToCart ? 'যোগ হয়েছে' : 'কার্টে যোগ'),
+              label: Text(
+                _addedToCart
+                    ? _t(bn, 'যোগ হয়েছে', 'Added')
+                    : _t(bn, 'কার্টে যোগ', 'Add to Cart'),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -396,7 +443,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ),
               ),
               child: Text(
-                product.inStock ? 'এখনই কিনুন' : 'স্টক নেই',
+                product.inStock
+                    ? _t(bn, 'এখনই কিনুন', 'Buy Now')
+                    : _t(bn, 'স্টক নেই', 'Out of Stock'),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,

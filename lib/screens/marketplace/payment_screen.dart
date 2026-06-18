@@ -3,9 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../providers/lang_provider.dart';
 import '../../providers/marketplace_provider.dart';
 import '../../services/payment_service.dart';
 import '../payment/bkash_webview_screen.dart';
+
+String _t(bool bn, String bangla, String english) => bn ? bangla : english;
+
+String _price(bool bn, double amount) =>
+    bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
@@ -19,35 +25,48 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   final _addressController = TextEditingController();
   bool _isPlacing = false;
 
-  // SSLCommerz removed
-  static const _paymentOptions = [
-    (
-      id: 'bkash',
-      label: 'বিকাশ',
-      subtitle: 'মোবাইল ব্যাংকিং',
-      icon: Icons.phone_android_rounded,
-      color: Color(0xFFE2136E),
-    ),
-    (
-      id: 'cash',
-      label: 'ক্যাশ অন ডেলিভারি',
-      subtitle: 'পণ্য পেলে পরিশোধ',
-      icon: Icons.payments_outlined,
-      color: Color(0xFF2E7D32),
-    ),
-  ];
-
   @override
   void dispose() {
     _addressController.dispose();
     super.dispose();
   }
 
-  Future<void> _confirmOrder() async {
+  List<
+      ({
+        String id,
+        String labelBn,
+        String labelEn,
+        String subtitleBn,
+        String subtitleEn,
+        IconData icon,
+        Color color
+      })> get _paymentOptions => [
+        (
+          id: 'bkash',
+          labelBn: 'বিকাশ',
+          labelEn: 'bKash',
+          subtitleBn: 'মোবাইল ব্যাংকিং',
+          subtitleEn: 'Mobile Banking',
+          icon: Icons.phone_android_rounded,
+          color: const Color(0xFFE2136E),
+        ),
+        (
+          id: 'cash',
+          labelBn: 'ক্যাশ অন ডেলিভারি',
+          labelEn: 'Cash on Delivery',
+          subtitleBn: 'পণ্য পেলে পরিশোধ',
+          subtitleEn: 'Pay when you receive',
+          icon: Icons.payments_outlined,
+          color: const Color(0xFF2E7D32),
+        ),
+      ];
+
+  Future<void> _confirmOrder(bool bn) async {
     if (_addressController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ডেলিভারি ঠিকানা দিন'),
+        SnackBar(
+          content: Text(
+              _t(bn, 'ডেলিভারি ঠিকানা দিন', 'Please enter a delivery address')),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -56,13 +75,13 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
 
     if (_selectedPayment == 'bkash') {
-      await _confirmWithBkash();
+      await _confirmWithBkash(bn);
     } else {
-      await _confirmDirect();
+      await _confirmDirect(bn);
     }
   }
 
-  Future<void> _confirmWithBkash() async {
+  Future<void> _confirmWithBkash(bool bn) async {
     final cart = ref.read(marketplaceProvider).cart;
     if (cart.isEmpty) return;
 
@@ -89,7 +108,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           builder: (_) => BkashWebViewScreen(
             bkashUrl: paymentResult.bkashUrl,
             paymentId: paymentResult.paymentId,
-            bn: true,
+            bn: bn,
           ),
         ),
       );
@@ -117,7 +136,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       setState(() => _isPlacing = false);
       messenger.showSnackBar(
         SnackBar(
-          content: Text('পেমেন্ট ব্যর্থ হয়েছে: $e'),
+          content:
+              Text(_t(bn, 'পেমেন্ট ব্যর্থ হয়েছে: $e', 'Payment failed: $e')),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -125,7 +145,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
   }
 
-  Future<void> _confirmDirect() async {
+  Future<void> _confirmDirect(bool bn) async {
     setState(() => _isPlacing = true);
 
     final nav = Navigator.of(context);
@@ -148,8 +168,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
       if (!mounted) return;
       setState(() => _isPlacing = false);
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('অর্ডার দেওয়া যায়নি। আবার চেষ্টা করুন।'),
+        SnackBar(
+          content: Text(_t(bn, 'অর্ডার দেওয়া যায়নি। আবার চেষ্টা করুন।',
+              'Could not place order. Please try again.')),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -159,6 +180,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
     final state = ref.watch(marketplaceProvider);
     final cart = state.cart;
     final subtotal =
@@ -179,14 +201,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('পেমেন্ট',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          _t(bn, 'পেমেন্ট', 'Payment'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // ── Order summary ─────────────────────────────────────
           _buildCard(
-            title: 'অর্ডার সারসংক্ষেপ',
+            title: _t(bn, 'অর্ডার সারসংক্ষেপ', 'Order Summary'),
             child: Column(
               children: [
                 ...cart.map((item) => Padding(
@@ -215,15 +240,17 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 14)),
-                                Text('${item.quantity} ${item.product.unit}',
-                                    style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12)),
+                                Text(
+                                  '${item.quantity} ${item.product.unit}',
+                                  style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12),
+                                ),
                               ],
                             ),
                           ),
                           Text(
-                            '৳${(item.product.price * item.quantity).toStringAsFixed(0)}',
+                            _price(bn, item.product.price * item.quantity),
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 14),
                           ),
@@ -232,18 +259,25 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     )),
                 Divider(color: Colors.grey.shade200),
                 const SizedBox(height: 4),
-                _PriceRow(label: 'পণ্যের মূল্য', amount: subtotal),
+                _PriceRow(
+                  label: _t(bn, 'পণ্যের মূল্য', 'Product Price'),
+                  amount: subtotal,
+                  bn: bn,
+                ),
                 const SizedBox(height: 6),
                 _PriceRow(
-                    label: 'ডেলিভারি চার্জ',
-                    amount: deliveryFee,
-                    amountColor: Colors.grey.shade700),
+                  label: _t(bn, 'ডেলিভারি চার্জ', 'Delivery Fee'),
+                  amount: deliveryFee,
+                  bn: bn,
+                  amountColor: Colors.grey.shade700,
+                ),
                 const SizedBox(height: 10),
                 Divider(color: Colors.grey.shade200),
                 const SizedBox(height: 6),
                 _PriceRow(
-                  label: 'সর্বমোট',
+                  label: _t(bn, 'সর্বমোট', 'Grand Total'),
                   amount: total,
+                  bn: bn,
                   labelStyle: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
@@ -257,13 +291,19 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // ── Delivery address ──────────────────────────────────
           _buildCard(
-            title: 'ডেলিভারি ঠিকানা',
+            title: _t(bn, 'ডেলিভারি ঠিকানা', 'Delivery Address'),
             child: TextFormField(
               controller: _addressController,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText: 'বাড়ি নম্বর, রাস্তা, এলাকা, জেলা লিখুন...',
+                hintText: _t(
+                  bn,
+                  'বাড়ি নম্বর, রাস্তা, এলাকা, জেলা লিখুন...',
+                  'House no., road, area, district...',
+                ),
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
                 filled: true,
                 fillColor: const Color(0xFFF8FAF8),
@@ -285,8 +325,10 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          // ── Payment method ────────────────────────────────────
           _buildCard(
-            title: 'পেমেন্ট পদ্ধতি',
+            title: _t(bn, 'পেমেন্ট পদ্ধতি', 'Payment Method'),
             child: Column(
               children: _paymentOptions.map((option) {
                 final isSelected = _selectedPayment == option.id;
@@ -322,17 +364,20 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(option.label,
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: isSelected
-                                          ? option.color
-                                          : const Color(0xFF1A1A1A))),
-                              Text(option.subtitle,
-                                  style: TextStyle(
-                                      color: Colors.grey.shade500,
-                                      fontSize: 12)),
+                              Text(
+                                bn ? option.labelBn : option.labelEn,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: isSelected
+                                        ? option.color
+                                        : const Color(0xFF1A1A1A)),
+                              ),
+                              Text(
+                                bn ? option.subtitleBn : option.subtitleEn,
+                                style: TextStyle(
+                                    color: Colors.grey.shade500, fontSize: 12),
+                              ),
                             ],
                           ),
                         ),
@@ -363,6 +408,8 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               }).toList(),
             ),
           ),
+
+          // ── bKash sandbox hint ────────────────────────────────
           if (_selectedPayment == 'bkash') ...[
             const SizedBox(height: 12),
             Container(
@@ -372,14 +419,18 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 15, color: Colors.amber),
-                  SizedBox(width: 8),
+                  const Icon(Icons.info_outline, size: 15, color: Colors.amber),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'স্যান্ডবক্স: ওয়ালেট 01770618575 · PIN 12121 · OTP 123456',
-                      style: TextStyle(fontSize: 11, color: Colors.amber),
+                      _t(
+                        bn,
+                        'স্যান্ডবক্স: ওয়ালেট 01770618575 · PIN 12121 · OTP 123456',
+                        'Sandbox: Wallet 01770618575 · PIN 12121 · OTP 123456',
+                      ),
+                      style: const TextStyle(fontSize: 11, color: Colors.amber),
                     ),
                   ),
                 ],
@@ -387,10 +438,12 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             ),
           ],
           const SizedBox(height: 28),
+
+          // ── Confirm button ────────────────────────────────────
           SizedBox(
             height: 54,
             child: ElevatedButton(
-              onPressed: _isPlacing ? null : _confirmOrder,
+              onPressed: _isPlacing ? null : () => _confirmOrder(bn),
               style: ElevatedButton.styleFrom(
                 backgroundColor: buttonColor,
                 foregroundColor: Colors.white,
@@ -399,25 +452,35 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                     borderRadius: BorderRadius.circular(14)),
               ),
               child: _isPlacing
-                  ? const Row(
+                  ? Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SizedBox(
+                        const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2.5),
                         ),
-                        SizedBox(width: 12),
-                        Text('অর্ডার দেওয়া হচ্ছে...',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 12),
+                        Text(
+                          _t(bn, 'অর্ডার দেওয়া হচ্ছে...', 'Placing order...'),
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     )
                   : Text(
                       _selectedPayment == 'bkash'
-                          ? 'বিকাশে পেমেন্ট করুন — ৳${total.toStringAsFixed(0)}'
-                          : '৳${total.toStringAsFixed(0)} পরিশোধ করুন',
+                          ? _t(
+                              bn,
+                              'বিকাশে পেমেন্ট করুন — ${_price(bn, total)}',
+                              'Pay with bKash — ${_price(bn, total)}',
+                            )
+                          : _t(
+                              bn,
+                              '${_price(bn, total)} পরিশোধ করুন',
+                              'Pay ${_price(bn, total)}',
+                            ),
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold),
                     ),
@@ -470,6 +533,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 class _PriceRow extends StatelessWidget {
   final String label;
   final double amount;
+  final bool bn;
   final TextStyle? labelStyle;
   final Color? amountColor;
   final TextStyle? amountStyle;
@@ -477,6 +541,7 @@ class _PriceRow extends StatelessWidget {
   const _PriceRow({
     required this.label,
     required this.amount,
+    required this.bn,
     this.labelStyle,
     this.amountColor,
     this.amountStyle,
@@ -490,13 +555,17 @@ class _PriceRow extends StatelessWidget {
         Text(label,
             style: labelStyle ??
                 TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-        Text('৳${amount.toStringAsFixed(0)}',
-            style: amountStyle ??
-                TextStyle(
-                  color: amountColor ?? const Color(0xFF1A1A1A),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                )),
+        Text(
+          bn
+              ? '৳${amount.toStringAsFixed(0)}'
+              : 'Taka ${amount.toStringAsFixed(0)}',
+          style: amountStyle ??
+              TextStyle(
+                color: amountColor ?? const Color(0xFF1A1A1A),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+        ),
       ],
     );
   }

@@ -4,9 +4,45 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/product.dart';
+import '../../providers/lang_provider.dart';
 import '../../providers/marketplace_provider.dart';
 
-void _showAddedToCartSnackBar(BuildContext context, Product product) {
+String _t(bool bn, String bangla, String english) => bn ? bangla : english;
+
+String _price(bool bn, double amount) =>
+    bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
+
+String _categoryLabel(bool bn, String category) {
+  if (bn) {
+    switch (category) {
+      case 'crop':
+        return 'ফসল';
+      case 'fertilizer':
+        return 'সার';
+      case 'insecticide':
+        return 'কীটনাশক';
+      case 'tool':
+        return 'সরঞ্জাম';
+      default:
+        return 'অন্যান্য';
+    }
+  } else {
+    switch (category) {
+      case 'crop':
+        return 'Crops';
+      case 'fertilizer':
+        return 'Fertilizer';
+      case 'insecticide':
+        return 'Insecticide';
+      case 'tool':
+        return 'Tools';
+      default:
+        return 'Other';
+    }
+  }
+}
+
+void _showAddedToCartSnackBar(BuildContext context, Product product, bool bn) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
       content: Row(
@@ -15,7 +51,8 @@ void _showAddedToCartSnackBar(BuildContext context, Product product) {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '${product.title} কার্টে যোগ হয়েছে',
+              _t(bn, '${product.title} কার্টে যোগ হয়েছে',
+                  '${product.title} added to cart'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -138,17 +175,18 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
     }
   }
 
-  static const _categories = [
-    ('all', 'সব'),
-    ('crop', 'ফসল'),
-    ('fertilizer', 'সার'),
-    ('insecticide', 'কীটনাশক'),
-    ('tool', 'সরঞ্জাম'),
-    ('other', 'অন্যান্য'),
-  ];
+  List<(String, String, String)> _categories(bool bn) => [
+        ('all', 'সব', 'All'),
+        ('crop', 'ফসল', 'Crops'),
+        ('fertilizer', 'সার', 'Fertilizer'),
+        ('insecticide', 'কীটনাশক', 'Insecticide'),
+        ('tool', 'সরঞ্জাম', 'Tools'),
+        ('other', 'অন্যান্য', 'Other'),
+      ];
 
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
     final state = ref.watch(marketplaceProvider);
     final notifier = ref.read(marketplaceProvider.notifier);
     final cartCount = notifier.cartCount;
@@ -161,50 +199,51 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F5),
-      appBar: _buildAppBar(cartCount),
+      appBar: _buildAppBar(cartCount, bn),
       body: Column(
         children: [
-          _buildSearchBar(),
-          _buildCategoryChips(state.selectedCategory, notifier),
+          _buildSearchBar(bn),
+          _buildCategoryChips(state.selectedCategory, notifier, bn),
           Expanded(
             child: state.isLoading
                 ? const Center(
                     child:
                         CircularProgressIndicator(color: AppTheme.primaryGreen))
                 : state.error != null
-                    ? _buildError(state.error!, notifier)
+                    ? _buildError(state.error!, notifier, bn)
                     : products.isEmpty
-                        ? _buildEmpty()
+                        ? _buildEmpty(bn)
                         : RefreshIndicator(
                             color: AppTheme.primaryGreen,
                             onRefresh: () => notifier.loadProducts(
                                 category: state.selectedCategory),
-                            child: _buildProductGrid(products, notifier),
+                            child: _buildProductGrid(products, notifier, bn),
                           ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(bn),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.pushNamed(context, AppRouter.sellProduct),
         backgroundColor: AppTheme.primaryGreen,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'পণ্য বিক্রি করুন',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        label: Text(
+          _t(bn, 'পণ্য বিক্রি করুন', 'Sell a Product'),
+          style:
+              const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(int cartCount) {
+  PreferredSizeWidget _buildAppBar(int cartCount, bool bn) {
     return AppBar(
       backgroundColor: AppTheme.primaryGreen,
       elevation: 0,
       automaticallyImplyLeading: false,
-      title: const Text(
-        'কৃষি বাজার',
-        style: TextStyle(
+      title: Text(
+        _t(bn, 'কৃষি বাজার', 'Agri Market'),
+        style: const TextStyle(
             color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
       ),
       actions: [
@@ -237,7 +276,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(bool bn) {
     return Container(
       color: AppTheme.primaryGreen,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -246,7 +285,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
         onChanged: (v) => setState(() => _searchQuery = v),
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
-          hintText: 'পণ্য খুঁজুন...',
+          hintText: _t(bn, 'পণ্য খুঁজুন...', 'Search products...'),
           hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
           prefixIcon: const Icon(Icons.search, color: Colors.grey, size: 20),
           suffixIcon: _searchQuery.isNotEmpty
@@ -270,19 +309,21 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
     );
   }
 
-  Widget _buildCategoryChips(String selected, MarketplaceNotifier notifier) {
+  Widget _buildCategoryChips(
+      String selected, MarketplaceNotifier notifier, bool bn) {
+    final cats = _categories(bn);
     return Container(
       height: 48,
       color: Colors.white,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _categories.length,
+        itemCount: cats.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
-          final (key, label) = _categories[i];
+          final (key, labelBn, labelEn) = cats[i];
           return _CategoryChip(
-            label: label,
+            label: bn ? labelBn : labelEn,
             isSelected: selected == key,
             onTap: () => notifier.setCategory(key),
           );
@@ -292,7 +333,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   }
 
   Widget _buildProductGrid(
-      List<Product> products, MarketplaceNotifier notifier) {
+      List<Product> products, MarketplaceNotifier notifier, bool bn) {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -304,9 +345,10 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       itemCount: products.length,
       itemBuilder: (_, i) => _ProductCard(
         product: products[i],
+        bn: bn,
         onAddToCart: () {
           notifier.addToCart(products[i]);
-          _showAddedToCartSnackBar(context, products[i]);
+          _showAddedToCartSnackBar(context, products[i], bn);
         },
         onTap: () => Navigator.pushNamed(
           context,
@@ -317,21 +359,23 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(bool bn) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 12),
-          Text('কোনো পণ্য পাওয়া যায়নি',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+          Text(
+            _t(bn, 'কোনো পণ্য পাওয়া যায়নি', 'No products found'),
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildError(String error, MarketplaceNotifier notifier) {
+  Widget _buildError(String error, MarketplaceNotifier notifier, bool bn) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -350,14 +394,14 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                   borderRadius: BorderRadius.circular(12)),
             ),
             icon: const Icon(Icons.refresh),
-            label: const Text('আবার চেষ্টা করুন'),
+            label: Text(_t(bn, 'আবার চেষ্টা করুন', 'Try Again')),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(bool bn) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -389,16 +433,19 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
           unselectedLabelStyle: const TextStyle(fontSize: 10),
           backgroundColor: Colors.white,
           elevation: 0,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined), label: 'হোম'),
+                icon: const Icon(Icons.home_outlined),
+                label: _t(bn, 'হোম', 'Home')),
             BottomNavigationBarItem(
-                icon: Icon(Icons.store_outlined), label: 'বাজার'),
+                icon: const Icon(Icons.store_outlined),
+                label: _t(bn, 'বাজার', 'Market')),
             BottomNavigationBarItem(
-                icon: Icon(Icons.miscellaneous_services_outlined),
-                label: 'সেবা'),
+                icon: const Icon(Icons.miscellaneous_services_outlined),
+                label: _t(bn, 'সেবা', 'Services')),
             BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline), label: 'প্রোফাইল'),
+                icon: const Icon(Icons.person_outline),
+                label: _t(bn, 'প্রোফাইল', 'Profile')),
           ],
         ),
       ),
@@ -409,11 +456,13 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 // ── Product Card ───────────────────────────────────────────────
 class _ProductCard extends StatefulWidget {
   final Product product;
+  final bool bn;
   final VoidCallback onAddToCart;
   final VoidCallback onTap;
 
   const _ProductCard({
     required this.product,
+    required this.bn,
     required this.onAddToCart,
     required this.onTap,
   });
@@ -428,6 +477,7 @@ class _ProductCardState extends State<_ProductCard> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    final bn = widget.bn;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -509,11 +559,13 @@ class _ProductCardState extends State<_ProductCard> {
                             color: Colors.red.shade400,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text('স্টক নেই',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold)),
+                          child: Text(
+                            _t(bn, 'স্টক নেই', 'Out of Stock'),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
                   ],
@@ -534,11 +586,13 @@ class _ProductCardState extends State<_ProductCard> {
                         color: AppTheme.primaryGreen.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(product.categoryBn,
-                          style: const TextStyle(
-                              color: AppTheme.primaryGreen,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600)),
+                      child: Text(
+                        _categoryLabel(bn, product.category),
+                        style: const TextStyle(
+                            color: AppTheme.primaryGreen,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(product.title,
@@ -557,7 +611,7 @@ class _ProductCardState extends State<_ProductCard> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                '৳${product.price.toStringAsFixed(0)}',
+                                _price(bn, product.price),
                                 style: const TextStyle(
                                     color: AppTheme.primaryGreen,
                                     fontWeight: FontWeight.bold,
@@ -574,7 +628,6 @@ class _ProductCardState extends State<_ProductCard> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        // ── Press-animated add button ──
                         GestureDetector(
                           onTapDown: product.inStock
                               ? (_) => setState(() => _pressing = true)

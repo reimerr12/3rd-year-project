@@ -25,7 +25,7 @@ class KrishokApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'Krishok',
+      title: 'KrishiBondhu',
       debugShowCheckedModeBanner: false,
       routes: AppRouter.routes,
       home: const _AuthGate(),
@@ -33,8 +33,6 @@ class KrishokApp extends ConsumerWidget {
   }
 }
 
-/// Watches [authProvider] and routes to the correct screen on cold start.
-/// Shows a branded splash while the session check is in flight.
 class _AuthGate extends ConsumerWidget {
   const _AuthGate();
 
@@ -44,13 +42,11 @@ class _AuthGate extends ConsumerWidget {
 
     return authAsync.when(
       loading: () => const _SplashScreen(),
-      error: (_, __) => const _SplashScreen(), // treat errors as logged-out
+      error: (_, __) => const _SplashScreen(),
       data: (authState) {
         if (authState.isAuthenticated) {
-          // Already has a valid session — go straight to home.
           return AppRouter.routes[AppRouter.home]!(context);
         }
-        // No session — show login.
         return AppRouter.routes[AppRouter.login]!(context);
       },
     );
@@ -62,24 +58,29 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.grass_rounded, color: Color(0xFF2E7D32), size: 56),
-            SizedBox(height: 16),
-            Text(
-              'কৃষক',
+            Image.asset(
+              'assets/images/logo.jpeg',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'কৃষিবন্ধু',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF2E7D32),
               ),
             ),
-            SizedBox(height: 24),
-            CircularProgressIndicator(
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(
               color: Color(0xFF2E7D32),
               strokeWidth: 2.5,
             ),

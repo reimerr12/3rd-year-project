@@ -126,25 +126,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               const SizedBox(height: 48),
 
               // Logo
+              // Logo
               Center(
-                child: Container(
+                child: Image.asset(
+                  'assets/images/logo.jpeg',
                   width: 72,
                   height: 72,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.grass_rounded,
-                    color: Colors.white,
-                    size: 40,
-                  ),
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 16),
               const Center(
                 child: Text(
-                  'কৃষক',
+                  'কৃষিবন্ধু',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,

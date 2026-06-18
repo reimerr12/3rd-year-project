@@ -6,8 +6,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../providers/lang_provider.dart';
 import '../../providers/marketplace_provider.dart';
 import '../../services/supabase_service.dart';
+
+String _t(bool bn, String bangla, String english) => bn ? bangla : english;
 
 class SellProductScreen extends ConsumerStatefulWidget {
   const SellProductScreen({super.key});
@@ -26,22 +29,18 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
 
   String _selectedCategory = 'crop';
   bool _isSubmitting = false;
-
-  /// Picked image files (max 3)
   final List<XFile> _pickedImages = [];
-
-  /// Upload progress flag — separate from _isSubmitting so UI is granular
   bool _isUploadingImages = false;
 
   static const int _maxImages = 3;
 
-  static const _categories = [
-    ('crop', 'ফসল'),
-    ('fertilizer', 'সার'),
-    ('insecticide', 'কীটনাশক'),
-    ('tool', 'সরঞ্জাম'),
-    ('other', 'অন্যান্য'),
-  ];
+  List<({String key, String labelBn, String labelEn})> get _categories => [
+        (key: 'crop', labelBn: 'ফসল', labelEn: 'Crops'),
+        (key: 'fertilizer', labelBn: 'সার', labelEn: 'Fertilizer'),
+        (key: 'insecticide', labelBn: 'কীটনাশক', labelEn: 'Insecticide'),
+        (key: 'tool', labelBn: 'সরঞ্জাম', labelEn: 'Tools'),
+        (key: 'other', labelBn: 'অন্যান্য', labelEn: 'Other'),
+      ];
 
   @override
   void dispose() {
@@ -55,13 +54,12 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
 
   // ── Image picking ──────────────────────────────────────────
 
-  Future<void> _pickImages() async {
+  Future<void> _pickImages(bool bn) async {
     if (_pickedImages.length >= _maxImages) return;
 
     final picker = ImagePicker();
     final remaining = _maxImages - _pickedImages.length;
 
-    // Show bottom sheet: camera or gallery
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -84,13 +82,13 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined,
                   color: AppTheme.primaryGreen),
-              title: const Text('ক্যামেরা'),
+              title: Text(_t(bn, 'ক্যামেরা', 'Camera')),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined,
                   color: AppTheme.primaryGreen),
-              title: const Text('গ্যালারি'),
+              title: Text(_t(bn, 'গ্যালারি', 'Gallery')),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             const SizedBox(height: 8),
@@ -103,13 +101,10 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
 
     try {
       if (source == ImageSource.gallery && remaining > 1) {
-        // Multi-pick from gallery when slots remain
         final picked = await picker.pickMultiImage(imageQuality: 80);
         if (picked.isEmpty) return;
         setState(() {
-          _pickedImages.addAll(
-            picked.take(remaining),
-          );
+          _pickedImages.addAll(picked.take(remaining));
         });
       } else {
         final picked = await picker.pickImage(source: source, imageQuality: 80);
@@ -119,8 +114,9 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ছবি নির্বাচন করা যায়নি।'),
+        SnackBar(
+          content: Text(
+              _t(bn, 'ছবি নির্বাচন করা যায়নি।', 'Could not select image.')),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -131,8 +127,6 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
   void _removeImage(int index) {
     setState(() => _pickedImages.removeAt(index));
   }
-
-  // ── Upload all picked images to Supabase Storage ───────────
 
   Future<List<String>> _uploadImages() async {
     if (_pickedImages.isEmpty) return [];
@@ -152,17 +146,13 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
     return urls;
   }
 
-  // ── Form submit ────────────────────────────────────────────
-
-  Future<void> _submit() async {
+  Future<void> _submit(bool bn) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. Upload images first (returns [] if none picked)
       final imageUrls = await _uploadImages();
 
-      // 2. Delegate to provider — addProduct calls SupabaseService.createProduct
       await ref.read(marketplaceProvider.notifier).addProduct(
             title: _titleController.text.trim(),
             description: _descController.text.trim().isEmpty
@@ -183,8 +173,11 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
       );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('"${_titleController.text.trim()}" বাজারে যোগ করা হয়েছে!'),
+          content: Text(_t(
+            bn,
+            '"${_titleController.text.trim()}" বাজারে যোগ করা হয়েছে!',
+            '"${_titleController.text.trim()}" has been listed in the market!',
+          )),
           backgroundColor: AppTheme.primaryGreen,
           behavior: SnackBarBehavior.floating,
         ),
@@ -192,8 +185,9 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('পণ্য যোগ করা যায়নি। আবার চেষ্টা করুন।'),
+        SnackBar(
+          content: Text(_t(bn, 'পণ্য যোগ করা যায়নি। আবার চেষ্টা করুন।',
+              'Could not add product. Please try again.')),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -207,13 +201,17 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bn = ref.watch(langProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F5),
       appBar: AppBar(
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
-        title: const Text('পণ্য বিক্রি করুন',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          _t(bn, 'পণ্য বিক্রি করুন', 'Sell a Product'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -224,40 +222,35 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildImagePicker(),
+            _buildImagePicker(bn),
             const SizedBox(height: 20),
             _buildCard(
-              title: 'পণ্যের তথ্য',
+              title: _t(bn, 'পণ্যের তথ্য', 'Product Details'),
               children: [
                 _buildTextField(
                   controller: _titleController,
-                  label: 'পণ্যের নাম *',
-                  hint: 'যেমন: আমন ধান, ইউরিয়া সার',
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'পণ্যের নাম দিন' : null,
+                  label: _t(bn, 'পণ্যের নাম *', 'Product Name *'),
+                  hint: _t(bn, 'যেমন: আমন ধান, ইউরিয়া সার',
+                      'e.g. Aman Rice, Urea Fertilizer'),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? _t(bn, 'পণ্যের নাম দিন', 'Enter product name')
+                      : null,
                 ),
                 const SizedBox(height: 14),
                 _buildTextField(
                   controller: _descController,
-                  label: 'বিবরণ',
-                  hint: 'পণ্য সম্পর্কে বিস্তারিত লিখুন...',
+                  label: _t(bn, 'বিবরণ', 'Description'),
+                  hint: _t(bn, 'পণ্য সম্পর্কে বিস্তারিত লিখুন...',
+                      'Write details about the product...'),
                   maxLines: 4,
                 ),
                 const SizedBox(height: 14),
-                _buildDropdown<String>(
-                  label: 'ধরন *',
-                  value: _selectedCategory,
-                  items: _categories
-                      .map((c) =>
-                          DropdownMenuItem(value: c.$1, child: Text(c.$2)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _selectedCategory = v!),
-                ),
+                _buildDropdown(bn),
               ],
             ),
             const SizedBox(height: 16),
             _buildCard(
-              title: 'মূল্য ও স্টক',
+              title: _t(bn, 'মূল্য ও স্টক', 'Price & Stock'),
               children: [
                 Row(
                   children: [
@@ -265,8 +258,8 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
                       flex: 2,
                       child: _buildTextField(
                         controller: _priceController,
-                        label: 'মূল্য (৳) *',
-                        hint: '০',
+                        label: _t(bn, 'মূল্য (৳) *', 'Price (Taka) *'),
+                        hint: '0',
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
                         inputFormatters: [
@@ -274,10 +267,13 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
                               RegExp(r'^\d+\.?\d{0,2}')),
                         ],
                         validator: (v) {
-                          if (v == null || v.isEmpty) return 'মূল্য দিন';
+                          if (v == null || v.isEmpty) {
+                            return _t(bn, 'মূল্য দিন', 'Enter price');
+                          }
                           final parsed = double.tryParse(v);
                           if (parsed == null || parsed <= 0) {
-                            return 'সঠিক মূল্য দিন';
+                            return _t(
+                                bn, 'সঠিক মূল্য দিন', 'Enter a valid price');
                           }
                           return null;
                         },
@@ -288,10 +284,11 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
                       flex: 2,
                       child: _buildTextField(
                         controller: _unitController,
-                        label: 'একক *',
-                        hint: 'কেজি, প্যাকেট...',
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'একক দিন' : null,
+                        label: _t(bn, 'একক *', 'Unit *'),
+                        hint: _t(bn, 'কেজি, প্যাকেট...', 'kg, packet...'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? _t(bn, 'একক দিন', 'Enter unit')
+                            : null,
                       ),
                     ),
                   ],
@@ -299,14 +296,17 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
                 const SizedBox(height: 14),
                 _buildTextField(
                   controller: _stockController,
-                  label: 'স্টক পরিমাণ *',
-                  hint: '০',
+                  label: _t(bn, 'স্টক পরিমাণ *', 'Stock Quantity *'),
+                  hint: '0',
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'স্টক দিন';
+                    if (v == null || v.isEmpty) {
+                      return _t(bn, 'স্টক দিন', 'Enter stock');
+                    }
                     if (int.tryParse(v) == null || int.parse(v) < 0) {
-                      return 'সঠিক স্টক দিন';
+                      return _t(
+                          bn, 'সঠিক স্টক দিন', 'Enter a valid stock amount');
                     }
                     return null;
                   },
@@ -317,8 +317,9 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
             SizedBox(
               height: 52,
               child: ElevatedButton(
-                onPressed:
-                    (_isSubmitting || _isUploadingImages) ? null : _submit,
+                onPressed: (_isSubmitting || _isUploadingImages)
+                    ? null
+                    : () => _submit(bn),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryGreen,
                   foregroundColor: Colors.white,
@@ -339,15 +340,18 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
                           const SizedBox(width: 10),
                           Text(
                             _isUploadingImages
-                                ? 'ছবি আপলোড হচ্ছে...'
-                                : 'প্রকাশ হচ্ছে...',
+                                ? _t(bn, 'ছবি আপলোড হচ্ছে...',
+                                    'Uploading images...')
+                                : _t(bn, 'প্রকাশ হচ্ছে...', 'Publishing...'),
                             style: const TextStyle(fontSize: 14),
                           ),
                         ],
                       )
-                    : const Text('পণ্য প্রকাশ করুন',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    : Text(
+                        _t(bn, 'পণ্য প্রকাশ করুন', 'Publish Product'),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
             const SizedBox(height: 32),
@@ -359,11 +363,10 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
 
   // ── Image picker widget ────────────────────────────────────
 
-  Widget _buildImagePicker() {
+  Widget _buildImagePicker(bool bn) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Thumbnail row (shown only when images exist)
         if (_pickedImages.isNotEmpty) ...[
           SizedBox(
             height: 100,
@@ -373,23 +376,25 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
                   (_pickedImages.length < _maxImages ? 1 : 0),
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, index) {
-                // "Add more" tile at the end
                 if (index == _pickedImages.length) {
-                  return _buildAddMoreTile();
+                  return _buildAddMoreTile(bn);
                 }
-                return _buildImageThumbnail(index);
+                return _buildImageThumbnail(index, bn);
               },
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            '${_pickedImages.length}/$_maxImages ছবি যোগ করা হয়েছে',
+            _t(
+              bn,
+              '${_pickedImages.length}/$_maxImages ছবি যোগ করা হয়েছে',
+              '${_pickedImages.length}/$_maxImages image(s) added',
+            ),
             style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
           ),
         ] else
-          // Empty state — full-width tap target
           GestureDetector(
-            onTap: _pickImages,
+            onTap: () => _pickImages(bn),
             child: Container(
               height: 140,
               decoration: BoxDecoration(
@@ -413,14 +418,18 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
                         color: AppTheme.primaryGreen, size: 30),
                   ),
                   const SizedBox(height: 10),
-                  const Text('ছবি যোগ করুন',
-                      style: TextStyle(
-                          color: AppTheme.primaryGreen,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14)),
-                  Text('সর্বোচ্চ $_maxImages টি ছবি',
-                      style:
-                          TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                  Text(
+                    _t(bn, 'ছবি যোগ করুন', 'Add Photos'),
+                    style: const TextStyle(
+                        color: AppTheme.primaryGreen,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14),
+                  ),
+                  Text(
+                    _t(bn, 'সর্বোচ্চ $_maxImages টি ছবি',
+                        'Maximum $_maxImages photos'),
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -429,7 +438,7 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
     );
   }
 
-  Widget _buildImageThumbnail(int index) {
+  Widget _buildImageThumbnail(int index, bool bn) {
     return Stack(
       children: [
         ClipRRect(
@@ -441,7 +450,6 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
             fit: BoxFit.cover,
           ),
         ),
-        // Remove button
         Positioned(
           top: 4,
           right: 4,
@@ -457,7 +465,6 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
             ),
           ),
         ),
-        // Primary badge on first image
         if (index == 0)
           Positioned(
             bottom: 4,
@@ -468,17 +475,19 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
                 color: AppTheme.primaryGreen,
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text('মূল',
-                  style: TextStyle(color: Colors.white, fontSize: 10)),
+              child: Text(
+                _t(bn, 'মূল', 'Main'),
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildAddMoreTile() {
+  Widget _buildAddMoreTile(bool bn) {
     return GestureDetector(
-      onTap: _pickImages,
+      onTap: () => _pickImages(bn),
       child: Container(
         width: 100,
         height: 100,
@@ -490,21 +499,24 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
             width: 1.5,
           ),
         ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add_photo_alternate_outlined,
+            const Icon(Icons.add_photo_alternate_outlined,
                 color: AppTheme.primaryGreen, size: 26),
-            SizedBox(height: 4),
-            Text('যোগ করুন',
-                style: TextStyle(color: AppTheme.primaryGreen, fontSize: 11)),
+            const SizedBox(height: 4),
+            Text(
+              _t(bn, 'যোগ করুন', 'Add More'),
+              style:
+                  const TextStyle(color: AppTheme.primaryGreen, fontSize: 11),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ── Shared form widgets (unchanged) ───────────────────────
+  // ── Shared form widgets ────────────────────────────────────
 
   Widget _buildCard({required String title, required List<Widget> children}) {
     return Container(
@@ -584,22 +596,24 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
     );
   }
 
-  Widget _buildDropdown<T>({
-    required String label,
-    required T value,
-    required List<DropdownMenuItem<T>> items,
-    required void Function(T?) onChanged,
-  }) {
+  Widget _buildDropdown(bool bn) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+        Text(
+          _t(bn, 'ধরন *', 'Category *'),
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+        ),
         const SizedBox(height: 6),
-        DropdownButtonFormField<T>(
-          initialValue: value,
-          items: items,
-          onChanged: onChanged,
+        DropdownButtonFormField<String>(
+          value: _selectedCategory,
+          items: _categories
+              .map((c) => DropdownMenuItem(
+                    value: c.key,
+                    child: Text(bn ? c.labelBn : c.labelEn),
+                  ))
+              .toList(),
+          onChanged: (v) => setState(() => _selectedCategory = v!),
           decoration: InputDecoration(
             filled: true,
             fillColor: const Color(0xFFF8FAF8),

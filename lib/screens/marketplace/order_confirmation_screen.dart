@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../core/router.dart';
 import '../../core/theme.dart';
+import '../../providers/lang_provider.dart';
 import '../../providers/marketplace_provider.dart';
 
-class OrderConfirmationScreen extends StatelessWidget {
+String _t(bool bn, String bangla, String english) => bn ? bangla : english;
+
+String _price(bool bn, double amount) =>
+    bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
+
+class OrderConfirmationScreen extends ConsumerWidget {
   const OrderConfirmationScreen({super.key});
 
-  String _paymentLabel(String method) {
+  String _paymentLabel(String method, bool bn) {
     switch (method) {
       case 'bkash':
-        return 'বিকাশ';
-      case 'sslcommerz':
-        return 'SSLCommerz';
+        return 'bKash';
       case 'cash':
-        return 'ক্যাশ অন ডেলিভারি';
+        return _t(bn, 'ক্যাশ অন ডেলিভারি', 'Cash on Delivery');
       default:
         return method;
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bn = ref.watch(langProvider);
     final orders =
         (ModalRoute.of(context)!.settings.arguments as List<OrderEntry>?) ?? [];
 
@@ -37,13 +44,15 @@ class OrderConfirmationScreen extends StatelessWidget {
         backgroundColor: AppTheme.primaryGreen,
         foregroundColor: Colors.white,
         automaticallyImplyLeading: false,
-        title: const Text('অর্ডার নিশ্চিত',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          _t(bn, 'অর্ডার নিশ্চিত', 'Order Confirmed'),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          // ── Success block ───────────────────────────────────
+          // ── Success block ─────────────────────────────────────
           Center(
             child: Column(
               children: [
@@ -59,9 +68,10 @@ class OrderConfirmationScreen extends StatelessWidget {
                       color: AppTheme.primaryGreen, size: 64),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'অর্ডার সফলভাবে দেওয়া হয়েছে!',
-                  style: TextStyle(
+                Text(
+                  _t(bn, 'অর্ডার সফলভাবে দেওয়া হয়েছে!',
+                      'Order Placed Successfully!'),
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1A1A1A),
@@ -70,7 +80,11 @@ class OrderConfirmationScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'আপনার অর্ডার প্রক্রিয়াধীন আছে।\nশীঘ্রই বিক্রেতা নিশ্চিত করবেন।',
+                  _t(
+                    bn,
+                    'আপনার অর্ডার প্রক্রিয়াধীন আছে।\nশীঘ্রই বিক্রেতা নিশ্চিত করবেন।',
+                    'Your order is being processed.\nThe seller will confirm shortly.',
+                  ),
                   style: TextStyle(
                       color: Colors.grey.shade600, fontSize: 14, height: 1.5),
                   textAlign: TextAlign.center,
@@ -80,9 +94,10 @@ class OrderConfirmationScreen extends StatelessWidget {
             ),
           ),
 
-          // ── Ordered items ───────────────────────────────────
+          // ── Ordered items ─────────────────────────────────────
           _SectionCard(
-            title: '${orders.length}টি পণ্য অর্ডার হয়েছে',
+            title: _t(bn, '${orders.length}টি পণ্য অর্ডার হয়েছে',
+                '${orders.length} item(s) ordered'),
             child: Column(
               children: orders.map((order) {
                 return Padding(
@@ -116,7 +131,7 @@ class OrderConfirmationScreen extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '৳${order.total.toStringAsFixed(0)}',
+                        _price(bn, order.total),
                         style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -130,23 +145,25 @@ class OrderConfirmationScreen extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // ── Price breakdown ─────────────────────────────────
+          // ── Price breakdown ───────────────────────────────────
           _SectionCard(
-            title: 'মূল্য বিবরণ',
+            title: _t(bn, 'মূল্য বিবরণ', 'Price Breakdown'),
             child: Column(
               children: [
                 _Row(
-                    label: 'পণ্যের মূল্য',
-                    value: '৳${total.toStringAsFixed(0)}'),
+                  label: _t(bn, 'পণ্যের মূল্য', 'Product Price'),
+                  value: _price(bn, total),
+                ),
                 const SizedBox(height: 8),
                 _Row(
-                    label: 'ডেলিভারি চার্জ',
-                    value: '৳${deliveryFee.toStringAsFixed(0)}',
-                    valueColor: Colors.grey.shade600),
+                  label: _t(bn, 'ডেলিভারি চার্জ', 'Delivery Fee'),
+                  value: _price(bn, deliveryFee),
+                  valueColor: Colors.grey.shade600,
+                ),
                 Divider(height: 20, thickness: 1, color: Colors.grey.shade200),
                 _Row(
-                  label: 'সর্বমোট পরিশোধ',
-                  value: '৳${grandTotal.toStringAsFixed(0)}',
+                  label: _t(bn, 'সর্বমোট পরিশোধ', 'Grand Total'),
+                  value: _price(bn, grandTotal),
                   labelBold: true,
                   valueColor: AppTheme.primaryGreen,
                   valueBold: true,
@@ -157,22 +174,24 @@ class OrderConfirmationScreen extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // ── Delivery & payment info ─────────────────────────
+          // ── Delivery & payment info ───────────────────────────
           _SectionCard(
-            title: 'ডেলিভারি ও পেমেন্ট',
+            title: _t(bn, 'ডেলিভারি ও পেমেন্ট', 'Delivery & Payment'),
             child: Column(
               children: [
                 _Row(
-                  label: 'পেমেন্ট পদ্ধতি',
-                  value: _paymentLabel(paymentMethod),
+                  label: _t(bn, 'পেমেন্ট পদ্ধতি', 'Payment Method'),
+                  value: _paymentLabel(paymentMethod, bn),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('ঠিকানা',
-                        style: TextStyle(
-                            color: Colors.grey.shade600, fontSize: 14)),
+                    Text(
+                      _t(bn, 'ঠিকানা', 'Address'),
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                    ),
                     const Spacer(),
                     Expanded(
                       child: Text(
@@ -195,16 +214,20 @@ class OrderConfirmationScreen extends StatelessWidget {
                     border: Border.all(
                         color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.hourglass_empty_rounded,
+                      const Icon(Icons.hourglass_empty_rounded,
                           color: Color(0xFFF59E0B), size: 18),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'বিক্রেতা শীঘ্রই আপনার অর্ডার নিশ্চিত করবেন',
-                          style:
-                              TextStyle(fontSize: 13, color: Color(0xFF92400E)),
+                          _t(
+                            bn,
+                            'বিক্রেতা শীঘ্রই আপনার অর্ডার নিশ্চিত করবেন',
+                            'The seller will confirm your order shortly.',
+                          ),
+                          style: const TextStyle(
+                              fontSize: 13, color: Color(0xFF92400E)),
                         ),
                       ),
                     ],
@@ -215,7 +238,7 @@ class OrderConfirmationScreen extends StatelessWidget {
           ),
           const SizedBox(height: 32),
 
-          // ── Action buttons ──────────────────────────────────
+          // ── Action buttons ────────────────────────────────────
           ElevatedButton(
             onPressed: () => Navigator.pushNamedAndRemoveUntil(
               context,
@@ -229,8 +252,10 @@ class OrderConfirmationScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),
             ),
-            child: const Text('আমার অর্ডার দেখুন',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: Text(
+              _t(bn, 'আমার অর্ডার দেখুন', 'View My Orders'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(height: 12),
           OutlinedButton(
@@ -246,8 +271,10 @@ class OrderConfirmationScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),
             ),
-            child: const Text('বাজারে ফিরে যান',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            child: Text(
+              _t(bn, 'বাজারে ফিরে যান', 'Back to Market'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(height: 32),
         ],
