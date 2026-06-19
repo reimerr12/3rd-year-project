@@ -1,5 +1,3 @@
-// lib/screens/weather/weather_screen.dart
-
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +37,47 @@ String _weatherEmoji(String iconCode) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// in WeatherThemeConfig. The weather model still produces themeConfig for
+// gradient/card colors, but we override the status text here based on bn flag.
+// ---------------------------------------------------------------------------
+String _statusText(String iconCode, double tempCelsius, bool bn) {
+  // Match the same override logic as WeatherData.getThemeConfig
+  String code = iconCode;
+  if (code == '04d' && tempCelsius > 32) code = '02d';
+
+  final isNight = code.endsWith('n');
+  final core = code.length >= 2 ? code.substring(0, 2) : '01';
+
+  if (isNight) {
+    if (core == '09' || core == '10' || core == '11') {
+      return bn
+          ? 'বৃষ্টি হচ্ছে • আজ রাতেও সম্ভাবনা আছে'
+          : 'Rain tonight · more expected';
+    }
+    return bn ? 'পরিষ্কার রাত • শান্ত আবহাওয়া' : 'Clear night · calm';
+  }
+
+  switch (core) {
+    case '01':
+      return bn ? 'রৌদ্রোজ্জ্বল • আকাশ পরিষ্কার' : 'Sunny · clear sky';
+    case '02':
+      return bn ? 'আংশিক মেঘলা • রোদেলা আবহাওয়া' : 'Partly cloudy · sunny';
+    case '03':
+    case '04':
+      return bn ? 'আংশিক মেঘলা • আকাশ মেঘাচ্ছন্ন' : 'Overcast · cloudy sky';
+    case '09':
+    case '10':
+      return bn
+          ? 'আংশিক মেঘলা • আজ বৃষ্টি হতে পারে'
+          : 'Cloudy · rain likely today';
+    case '11':
+      return bn ? 'বজ্রঝড় • সাবধানে থাকুন' : 'Thunderstorm · stay safe';
+    default:
+      return bn ? 'আংশিক মেঘলা' : 'Partly cloudy';
+  }
+}
+
 class WeatherScreen extends ConsumerStatefulWidget {
   const WeatherScreen({super.key});
 
@@ -68,6 +107,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
   @override
   Widget build(BuildContext context) {
     final weatherAsync = ref.watch(weatherProvider);
+    // receive `bn` as a parameter so they react correctly on toggle.
     final bn = ref.watch(langProvider);
 
     return Scaffold(
@@ -174,7 +214,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
                                         color: Color(0xB3FFFFFF), size: 18),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '${data.current.cityName}, বাংলাদেশ',
+                                      '${data.current.cityName}, ${bn ? 'বাংলাদেশ' : 'Bangladesh'}',
                                       style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 18,
@@ -184,7 +224,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '${WeatherData.toBangla(data.current.tempCelsius.round())}°',
+                                  '${bn ? WeatherData.toBangla(data.current.tempCelsius.round()) : data.current.tempCelsius.round()}°',
                                   style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 86,
@@ -193,7 +233,11 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  config.statusText,
+                                  _statusText(
+                                    data.current.iconCode,
+                                    data.current.tempCelsius,
+                                    bn,
+                                  ),
                                   style: const TextStyle(
                                       color: Color(0xCCFFFFFF), fontSize: 15),
                                 ),
@@ -202,19 +246,24 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
                                   children: [
                                     _buildStatGlassCard(
                                       bn ? 'আর্দ্রতা' : 'Humidity',
-                                      '${WeatherData.toBangla(data.current.humidity)}%',
+                                      '${bn ? WeatherData.toBangla(data.current.humidity) : data.current.humidity}%',
                                       config,
                                     ),
                                     const SizedBox(width: 12),
                                     _buildStatGlassCard(
                                       bn ? 'বায়ু' : 'Wind',
-                                      '${WeatherData.toBangla((data.current.windSpeedMs * 3.6).round())} ${bn ? "কিমি/ঘণ্টা" : "km/h"}',
+                                      '${bn ? WeatherData.toBangla((data.current.windSpeedMs * 3.6).round()) : (data.current.windSpeedMs * 3.6).round()} ${bn ? "কিমি/ঘণ্টা" : "km/h"}',
                                       config,
                                     ),
                                     const SizedBox(width: 12),
                                     _buildStatGlassCard(
                                       bn ? 'বৃষ্টি সম্ভাবনা' : 'Rain',
-                                      '${WeatherData.toBangla(data.current.humidity - 5 > 0 ? data.current.humidity - 5 : 0)}%',
+                                      () {
+                                        final v = data.current.humidity - 5 > 0
+                                            ? data.current.humidity - 5
+                                            : 0;
+                                        return '${bn ? WeatherData.toBangla(v) : v}%';
+                                      }(),
                                       config,
                                     ),
                                   ],
@@ -295,7 +344,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
     );
   }
 
-  // Forecast track — emoji instead of Icon
+  // Forecast track
   Widget _buildForecastTrack(List<DailyForecast> days, bool bn) {
     return SizedBox(
       height: 120,
@@ -338,12 +387,13 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
                         fontWeight:
                             isToday ? FontWeight.bold : FontWeight.normal)),
                 const SizedBox(height: 10),
-                // Emoji instead of Icon
                 Text(_weatherEmoji(d.iconCode),
                     style: const TextStyle(fontSize: 26)),
                 const SizedBox(height: 10),
                 Text(
-                  '${WeatherData.toBangla(d.tempMax.round())}°',
+                  bn
+                      ? '${WeatherData.toBangla(d.tempMax.round())}°'
+                      : '${d.tempMax.round()}°',
                   style: TextStyle(
                       color: const Color(0xFF1E293B),
                       fontSize: 16,
@@ -408,7 +458,9 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: Text(
-                      '${WeatherData.toBangla(probValue)}%',
+                      bn
+                          ? '${WeatherData.toBangla(probValue)}%'
+                          : '$probValue%',
                       style: const TextStyle(
                           color: Color(0xFF1E293B),
                           fontSize: 13,
@@ -426,7 +478,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
 }
 
 // ---------------------------------------------------------------------------
-// Canvas painter (unchanged)
+// Canvas painter
 // ---------------------------------------------------------------------------
 class WeatherEffectPainter extends CustomPainter {
   final String iconCode;

@@ -182,7 +182,7 @@ class CalendarNotifier extends AsyncNotifier<CalendarState> {
   void selectCategory(CropCategory? cat) =>
       state = state.whenData((s) => s.copyWith(selectedCategory: cat));
 
-  /// Toggle language (Bangla ↔️ English)
+  /// Toggle language
   void toggleLanguage() =>
       state = state.whenData((s) => s.copyWith(isBangla: !s.isBangla));
 

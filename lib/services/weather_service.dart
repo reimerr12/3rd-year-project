@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import '../core/constants.dart';
 
-/// Clean data access isolation architecture managing raw remote endpoints directly.
+/// Clean data access isolation architecture managing raw remote endpoints directly
 class WeatherService {
   final Dio _dio = Dio(BaseOptions(
     baseUrl: AppConstants.weatherApiUrl,

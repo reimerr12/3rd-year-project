@@ -77,7 +77,7 @@ void _showAddedToCartSnackBar(BuildContext context, Product product, bool bn) {
 }
 
 // ---------------------------------------------------------------------------
-// Pressable cart button — extracted widget so each card owns its own bool
+// Pressable cart button
 // ---------------------------------------------------------------------------
 class _PressableCartButton extends StatefulWidget {
   final VoidCallback onTap;
@@ -121,7 +121,7 @@ class _PressableCartButtonState extends State<_PressableCartButton> {
 }
 
 // ---------------------------------------------------------------------------
-// Service Card — extracted widget with press feedback
+// Service Card
 // ---------------------------------------------------------------------------
 class _ServiceCard extends StatefulWidget {
   final IconData icon;
@@ -248,7 +248,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final bn = ref.watch(langProvider);
     final user = ref.watch(currentUserProvider);
     final userName =
-        user?.name.isNotEmpty == true ? user!.name : _t(bn, 'কৃষক', 'Farmer');
+        user?.name.isNotEmpty == true ? user!.name : _t(bn, 'স্বাগতম', 'Hello');
 
     final now = DateTime.now();
     final dateStr = bn

@@ -13,7 +13,7 @@ class AppUser {
   final String role;
   final String? division;
   final String? district;
-  final String langPref; // 'bn' | 'en'
+  final String langPref;
   final String? avatarUrl;
 
   const AppUser({

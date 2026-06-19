@@ -76,7 +76,7 @@ class CurrentWeather {
   }
 }
 
-/// A specific 3-hour timestamp segment inside the rolling weather pipeline.
+/// A specific 3-hour timestamp
 class HourlyWeather {
   final DateTime time;
   final double tempCelsius;
@@ -113,7 +113,7 @@ class HourlyWeather {
   }
 }
 
-/// An aggregated daily outlook containing compiled high/low records.
+/// An aggregated daily outlook
 class DailyForecast {
   final DateTime date;
   final double tempMin;
@@ -171,7 +171,7 @@ class WeatherData {
 
   List<HourlyWeather> get next9Hours => hourly.take(9).toList();
 
-  /// Evaluates icon parameters to provide dynamic interface style attributes.
+  ///dynamic interface style attributes.
   static WeatherThemeConfig getThemeConfig(String iconCode,
       {double tempCelsius = 0}) {
     // Hot + broken clouds (04d) → treat as warm hazy day visually

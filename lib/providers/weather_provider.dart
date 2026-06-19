@@ -60,9 +60,15 @@ class WeatherNotifier extends AsyncNotifier<WeatherData> {
   /// System position tracker with absolute safety backups to avoid device lockups.
   Future<Position> _determineLocation() async {
     final fallback = Position(
-      latitude: 24.8949, longitude: 91.8687, // Sylhet native defaults
-      timestamp: DateTime.now(), accuracy: 0, altitude: 0,
-      heading: 0, speed: 0, speedAccuracy: 0, altitudeAccuracy: 0,
+      latitude: 24.8949,
+      longitude: 91.8687,
+      timestamp: DateTime.now(),
+      accuracy: 0,
+      altitude: 0,
+      heading: 0,
+      speed: 0,
+      speedAccuracy: 0,
+      altitudeAccuracy: 0,
       headingAccuracy: 0,
     );
 

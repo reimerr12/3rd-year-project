@@ -17,7 +17,6 @@ enum EquipmentType {
     return null;
   }
 }
-
 // ---------------------------------------------------------------------------
 // Booking status helpers
 // ---------------------------------------------------------------------------
@@ -92,7 +91,6 @@ class RentalFilter {
   int get hashCode => Object.hash(division, type);
 }
 
-// Sentinel value used to distinguish "not passed" from null in copyWith
 const _sentinel = Object();
 
 // ---------------------------------------------------------------------------

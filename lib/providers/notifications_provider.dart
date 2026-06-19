@@ -4,7 +4,7 @@ import '../providers/auth_provider.dart';
 import '../providers/weather_provider.dart';
 
 // ---------------------------------------------------------------------------
-// Language toggle — reuses pattern from guidelines_provider
+// Language toggle
 // ---------------------------------------------------------------------------
 
 final notifLangProvider = StateProvider<bool>((ref) => true); // true = BN

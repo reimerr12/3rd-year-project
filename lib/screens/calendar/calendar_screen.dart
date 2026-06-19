@@ -151,20 +151,31 @@ class _BanglaHelper {
     };
   }
 
+  // Bengali seasons (Gregorian month approximations):
+  //   গ্রীষ্মকাল  Grishmo  · Summer      → Apr–May  (4–5)
+  //   বর্ষাকাল   Borsha   · Monsoon     → Jun–Aug  (6–8)
+  //   শরৎকাল    Shorot   · Autumn      → Sep–Oct  (9–10)
+  //   হেমন্তকাল  Hemonto  · Late Autumn → Nov–Dec  (11–12)
+  //   শীতকাল    Sheet    · Winter      → Jan      (1)
+  //   বসন্তকাল  Boshonto · Spring      → Feb–Mar  (2–3)
   static String seasonBn(int m) {
-    if (m >= 3 && m <= 5) return 'গ্রীষ্মকাল';
+    if (m == 4 || m == 5) return 'গ্রীষ্মকাল';
     if (m >= 6 && m <= 8) return 'বর্ষাকাল';
-    if (m >= 9 && m <= 10) return 'শরৎকাল';
+    if (m == 9 || m == 10) return 'শরৎকাল';
     if (m == 11 || m == 12) return 'হেমন্তকাল';
-    return 'শীতকাল';
+    if (m == 1) return 'শীতকাল';
+    if (m == 2 || m == 3) return 'বসন্তকাল';
+    return 'বসন্তকাল';
   }
 
   static String seasonEn(int m) {
-    if (m >= 3 && m <= 5) return 'Grishmo · Summer';
+    if (m == 4 || m == 5) return 'Grishmo · Summer';
     if (m >= 6 && m <= 8) return 'Borsha · Monsoon';
-    if (m >= 9 && m <= 10) return 'Shorot · Autumn';
+    if (m == 9 || m == 10) return 'Shorot · Autumn';
     if (m == 11 || m == 12) return 'Hemonto · Late Autumn';
-    return 'Sheet · Winter';
+    if (m == 1) return 'Sheet · Winter';
+    if (m == 2 || m == 3) return 'Boshonto · Spring';
+    return 'Boshonto · Spring';
   }
 
   static const _enDayNames = [
@@ -315,15 +326,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
 
   @override
   Widget build(BuildContext context) {
-    // ── Global lang → sync calendarProvider's internal isBangla ──────────
-    ref.listen<bool>(langProvider, (prev, next) {
-      // Only act on actual changes, not the initial fire
-      if (prev == null || prev == next) return;
-      final calState = ref.read(calendarProvider).valueOrNull;
-      if (calState != null && calState.isBangla != next) {
-        ref.read(calendarProvider.notifier).toggleLanguage();
-      }
-    });
+    // The calendarProvider's internal isBangla is no longer used for UI rendering;
+    // this eliminates the sync lag that caused partial language switching.
     final bn = ref.watch(langProvider);
     final async = ref.watch(calendarProvider);
 
@@ -340,14 +344,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
           onRefresh: ref.read(calendarProvider.notifier).refresh,
           child: CustomScrollView(
             slivers: [
-              _buildAppBar(state),
-              SliverToBoxAdapter(child: _buildDualMonthHeader(state)),
-              SliverToBoxAdapter(child: _buildSeasonBanner(state)),
-              SliverToBoxAdapter(child: _buildCategoryFilter(state)),
-              SliverToBoxAdapter(child: _buildCalendarCard(state)),
-              SliverToBoxAdapter(child: _buildMonthCropOverview(state)),
+              _buildAppBar(state, bn),
+              SliverToBoxAdapter(child: _buildDualMonthHeader(state, bn)),
+              SliverToBoxAdapter(child: _buildSeasonBanner(state, bn)),
+              SliverToBoxAdapter(child: _buildCategoryFilter(state, bn)),
+              SliverToBoxAdapter(child: _buildCalendarCard(state, bn)),
+              SliverToBoxAdapter(child: _buildMonthCropOverview(state, bn)),
               if (state.selectedDay != null)
-                SliverToBoxAdapter(child: _buildDateDetailPanel(state)),
+                SliverToBoxAdapter(child: _buildDateDetailPanel(state, bn)),
               const SliverToBoxAdapter(child: SizedBox(height: 40)),
             ],
           ),
@@ -403,8 +407,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 1. APP BAR — NO language toggle (controlled from home screen) ────────
-  Widget _buildAppBar(CalendarState state) {
+  // ─── 1. APP BAR ──────────────────────────────────────────────────────────
+  Widget _buildAppBar(CalendarState state, bool bn) {
     return SliverAppBar(
       pinned: true,
       elevation: 0,
@@ -429,14 +433,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             ),
           ),
           const Spacer(),
-          // Language toggle removed — controlled globally from home screen top bar
         ],
       ),
     );
   }
 
   // ─── 2. DUAL MONTH HEADER ────────────────────────────────────────────────
-  Widget _buildDualMonthHeader(CalendarState state) {
+  Widget _buildDualMonthHeader(CalendarState state, bool bn) {
     final b1 = _BanglaHelper.convert(
         DateTime(state.focusedYear, state.focusedMonth, 1));
     final lastDay =
@@ -478,7 +481,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
               child: Column(
                 children: [
                   Text(
-                    state.isBangla
+                    bn
                         ? '${_monthNameBn(state.focusedMonth)} ${_BanglaHelper.digits(state.focusedYear)}'
                         : '${_monthNameEn(state.focusedMonth)} ${state.focusedYear}',
                     style: const TextStyle(
@@ -523,7 +526,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   }
 
   // ─── 3. SEASON BANNER ────────────────────────────────────────────────────
-  Widget _buildSeasonBanner(CalendarState state) {
+  Widget _buildSeasonBanner(CalendarState state, bool bn) {
     final cropCount = state.activeThisMonth.length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -546,7 +549,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
           children: [
             Expanded(
               child: Text(
-                state.isBangla
+                bn
                     ? _BanglaHelper.seasonBn(state.focusedMonth)
                     : _BanglaHelper.seasonEn(state.focusedMonth),
                 style: const TextStyle(
@@ -562,15 +565,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                   borderRadius: BorderRadius.circular(10)),
               child: Column(
                 children: [
-                  Text(
-                      state.isBangla
-                          ? _BanglaHelper.digits(cropCount)
-                          : '$cropCount',
+                  Text(bn ? _BanglaHelper.digits(cropCount) : '$cropCount',
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
                           fontWeight: FontWeight.w900)),
-                  Text(state.isBangla ? 'সক্রিয়\nফসল' : 'Active\nCrops',
+                  Text(bn ? 'সক্রিয়\nফসল' : 'Active\nCrops',
                       style:
                           const TextStyle(color: Colors.white70, fontSize: 10),
                       textAlign: TextAlign.center),
@@ -584,7 +584,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   }
 
   // ─── 4. CATEGORY FILTER ──────────────────────────────────────────────────
-  Widget _buildCategoryFilter(CalendarState state) {
+  Widget _buildCategoryFilter(CalendarState state, bool bn) {
     final cats = [
       null,
       CropCategory.grain,
@@ -623,7 +623,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
         itemBuilder: (_, i) {
           final cat = cats[i];
           final active = state.selectedCategory == cat;
-          final label = state.isBangla ? labelsBn[cat]! : labelsEn[cat]!;
+          final label = bn ? labelsBn[cat]! : labelsEn[cat]!;
           return GestureDetector(
             onTap: () =>
                 ref.read(calendarProvider.notifier).selectCategory(cat),
@@ -670,7 +670,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   }
 
   // ─── 5. CALENDAR CARD ────────────────────────────────────────────────────
-  Widget _buildCalendarCard(CalendarState state) {
+  Widget _buildCalendarCard(CalendarState state, bool bn) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Container(
@@ -687,11 +687,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
         child: Column(
           children: [
             const SizedBox(height: 12),
-            _buildWeekdayRow(state),
+            _buildWeekdayRow(state, bn),
             const SizedBox(height: 4),
-            SlideTransition(position: _slideAnim, child: _buildDaysGrid(state)),
+            SlideTransition(
+                position: _slideAnim, child: _buildDaysGrid(state, bn)),
             const SizedBox(height: 8),
-            _buildLegend(state),
+            _buildLegend(state, bn),
             const SizedBox(height: 12),
           ],
         ),
@@ -699,7 +700,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  Widget _buildWeekdayRow(CalendarState state) {
+  Widget _buildWeekdayRow(CalendarState state, bool bn) {
     const engDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
     const bnDays = ['র', 'সো', 'ম', 'বু', 'বৃ', 'শু', 'শ'];
     return Padding(
@@ -710,12 +711,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             (i) => Expanded(
                   child: Column(
                     children: [
-                      Text(state.isBangla ? bnDays[i] : engDays[i],
+                      Text(bn ? bnDays[i] : engDays[i],
                           style: const TextStyle(
                               color: Color(0xFF555555),
                               fontSize: 11,
                               fontWeight: FontWeight.w700)),
-                      if (!state.isBangla)
+                      if (!bn)
                         Text(bnDays[i],
                             style: TextStyle(
                                 color: Colors.grey[400],
@@ -728,7 +729,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  Widget _buildDaysGrid(CalendarState state) {
+  Widget _buildDaysGrid(CalendarState state, bool bn) {
     final year = state.focusedYear;
     final month = state.focusedMonth;
     final first = DateTime(year, month, 1);
@@ -760,12 +761,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
         final bangla = _BanglaHelper.convert(date);
 
         return _DayCell(
-          engDay: state.isBangla ? _BanglaHelper.digits(d) : '$d',
+          engDay: bn ? _BanglaHelper.digits(d) : '$d',
           bnDay: bangla['dayBn'] as String,
           isToday: isToday,
           isSelected: isSelected,
           dotColor: dotColor,
-          isBangla: state.isBangla,
+          isBangla: bn,
           onTap: () {
             ref.read(calendarProvider.notifier).selectDay(d);
             _fadeCtrl.forward(from: 0);
@@ -786,8 +787,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  Widget _buildLegend(CalendarState state) {
-    final items = state.isBangla
+  Widget _buildLegend(CalendarState state, bool bn) {
+    final items = bn
         ? [
             (_Status.peak, 'ভরা মৌসুম'),
             (_Status.harvest, 'ফসল তোলা'),
@@ -828,7 +829,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   }
 
   // ─── 6. MONTH CROP OVERVIEW ──────────────────────────────────────────────
-  Widget _buildMonthCropOverview(CalendarState state) {
+  Widget _buildMonthCropOverview(CalendarState state, bool bn) {
     final crops = state.activeThisMonth
         .where((c) =>
             state.selectedCategory == null ||
@@ -842,7 +843,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             child: Column(children: [
           Icon(Icons.eco_rounded, size: 40, color: Colors.grey[300]),
           const SizedBox(height: 8),
-          Text(state.isBangla ? 'এই মাসে কোনো ফসল নেই' : 'No crops this month',
+          Text(bn ? 'এই মাসে কোনো ফসল নেই' : 'No crops this month',
               style: TextStyle(color: Colors.grey[500], fontSize: 13)),
         ])),
       );
@@ -857,7 +858,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             const Icon(Icons.bar_chart_rounded,
                 color: AppTheme.primaryGreen, size: 18),
             const SizedBox(width: 6),
-            Text(state.isBangla ? 'এই মাসের ফসল' : "This Month's Crops",
+            Text(bn ? 'এই মাসের ফসল' : "This Month's Crops",
                 style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -867,13 +868,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
           ...crops.take(6).map((crop) => _CropStatusTile(
               crop: crop,
               status: crop.statusFor(state.focusedMonth),
-              isBangla: state.isBangla)),
+              isBangla: bn)),
           if (crops.length > 6)
             Center(
                 child: Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                state.isBangla
+                bn
                     ? 'আরও ${_BanglaHelper.digits(crops.length - 6)} টি ফসল'
                     : '+ ${crops.length - 6} more crops',
                 style: const TextStyle(
@@ -888,7 +889,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   }
 
   // ─── 7. DATE DETAIL PANEL ────────────────────────────────────────────────
-  Widget _buildDateDetailPanel(CalendarState state) {
+  Widget _buildDateDetailPanel(CalendarState state, bool bn) {
     final day = state.selectedDay!;
     final date = DateTime(state.focusedYear, state.focusedMonth, day);
     final bangla = _BanglaHelper.convert(date);
@@ -932,7 +933,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            state.isBangla
+                            bn
                                 ? '${_BanglaHelper.dayBn(date.weekday)}, ${_BanglaHelper.digits(day)} ${_monthNameBn(date.month)} ${_BanglaHelper.digits(date.year)}'
                                 : '${_BanglaHelper.dayEn(date.weekday)}, ${_monthNameEn(date.month)} $day, ${date.year}',
                             style: const TextStyle(
@@ -948,7 +949,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                                 color: Colors.white.withValues(alpha: 0.18),
                                 borderRadius: BorderRadius.circular(20)),
                             child: Text(
-                              state.isBangla
+                              bn
                                   ? '${bangla['dayBn']} ${bangla['monthName']} ${bangla['yearBn']} বঙ্গাব্দ'
                                   : '${_BanglaHelper.dayEn(date.weekday)}, ${bangla['dayBn']} ${bangla['monthName']} ${bangla['yearBn']} বঙ্গাব্দ',
                               style: TextStyle(
@@ -969,14 +970,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                           borderRadius: BorderRadius.circular(10)),
                       child: Column(children: [
                         Text(
-                            state.isBangla
+                            bn
                                 ? _BanglaHelper.digits(crops.length)
                                 : '${crops.length}',
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900)),
-                        Text(state.isBangla ? 'সক্রিয়\nফসল' : 'Active\nCrops',
+                        Text(bn ? 'সক্রিয়\nফসল' : 'Active\nCrops',
                             style: const TextStyle(
                                 color: Colors.white70, fontSize: 9),
                             textAlign: TextAlign.center),
@@ -993,7 +994,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                     Icon(Icons.eco_rounded, size: 36, color: Colors.grey[300]),
                     const SizedBox(height: 8),
                     Text(
-                        state.isBangla
+                        bn
                             ? 'এই ফিল্টারে কোনো ফসল নেই'
                             : 'No crops for selected filter',
                         style: TextStyle(color: Colors.grey[500], fontSize: 13),
@@ -1008,7 +1009,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                         .map((crop) => _DetailedCropCard(
                             crop: crop,
                             status: crop.statusFor(date.month),
-                            isBangla: state.isBangla))
+                            isBangla: bn))
                         .toList(),
                   ),
                 ),

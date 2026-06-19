@@ -1,12 +1,3 @@
-// lib/providers/rental_provider.dart
-//
-// Providers
-//   browseEquipmentProvider  — paginated list for the Browse tab
-//   myEquipmentProvider      — owner's own listings
-//   myBookingsProvider       — renter's own bookings
-//   ownerBookingsProvider    — bookings on the owner's equipment
-//   rentalFilterProvider     — active filter state (division + type)
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_service.dart';
 import '../models/rental.dart';
@@ -37,7 +28,7 @@ class RentalFilterNotifier extends StateNotifier<RentalFilter> {
 }
 
 // ---------------------------------------------------------------------------
-// Browse tab — available equipment (filtered)
+// browse tab  available equipment (filtered)
 // ---------------------------------------------------------------------------
 
 final browseEquipmentProvider =
@@ -93,7 +84,6 @@ class BrowseEquipmentNotifier extends AsyncNotifier<List<EquipmentModel>> {
   bool get hasMore => _hasMore;
 }
 
-// --------------
 // -------------------------------------------------------------
 // Owner tab — own equipment listings
 // ---------------------------------------------------------------------------
