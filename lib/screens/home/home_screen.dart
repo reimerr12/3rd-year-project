@@ -16,9 +16,6 @@ import '../../providers/lang_provider.dart';
 
 String _t(bool bn, String bangla, String english) => bn ? bangla : english;
 
-// ---------------------------------------------------------------------------
-// Weather emoji helper — day/night aware
-// ---------------------------------------------------------------------------
 String _weatherEmoji(String iconCode) {
   if (iconCode.length < 2) return '🌤️';
   final core = iconCode.substring(0, 2);
@@ -47,9 +44,6 @@ String _weatherEmoji(String iconCode) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Add-to-cart confirmation snackbar
-// ---------------------------------------------------------------------------
 void _showAddedToCartSnackBar(BuildContext context, Product product, bool bn) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -76,9 +70,6 @@ void _showAddedToCartSnackBar(BuildContext context, Product product, bool bn) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Pressable cart button
-// ---------------------------------------------------------------------------
 class _PressableCartButton extends StatefulWidget {
   final VoidCallback onTap;
   const _PressableCartButton({required this.onTap});
@@ -105,10 +96,7 @@ class _PressableCartButtonState extends State<_PressableCartButton> {
         decoration: BoxDecoration(
           color: _pressing ? Colors.white : AppTheme.primaryGreen,
           shape: BoxShape.circle,
-          border: Border.all(
-            color: AppTheme.primaryGreen,
-            width: 1.5,
-          ),
+          border: Border.all(color: AppTheme.primaryGreen, width: 1.5),
         ),
         child: Icon(
           Icons.add_shopping_cart_rounded,
@@ -120,9 +108,6 @@ class _PressableCartButtonState extends State<_PressableCartButton> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Service Card
-// ---------------------------------------------------------------------------
 class _ServiceCard extends StatefulWidget {
   final IconData icon;
   final String label;
@@ -175,15 +160,12 @@ class _ServiceCardState extends State<_ServiceCard> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              child: CircleAvatar(
-                radius: 24,
-                backgroundColor: _pressing
-                    ? widget.color.withValues(alpha: 0.15)
-                    : widget.bgColor,
-                child: Icon(widget.icon, color: widget.color, size: 24),
-              ),
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: _pressing
+                  ? widget.color.withValues(alpha: 0.15)
+                  : widget.bgColor,
+              child: Icon(widget.icon, color: widget.color, size: 24),
             ),
             const SizedBox(height: 8),
             Flexible(
@@ -263,7 +245,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
+      extendBody: true,
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Column(
@@ -310,14 +294,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         )
                       : _buildProductGrid(previewProducts, bn),
-              const SizedBox(height: 120),
+              // Extra bottom padding so content clears the floating nav
+              const SizedBox(height: 110),
             ],
           ),
         ),
       ),
       floatingActionButton: _buildFAB(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: _buildBottomNav(bn),
+      bottomNavigationBar: _buildFloatingNav(bn),
     );
   }
 
@@ -347,7 +332,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // Notification bell
           GestureDetector(
             onTap: () => Navigator.pushNamed(context, AppRouter.notifications),
             child: Stack(
@@ -379,7 +363,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          // Global language toggle
           GestureDetector(
             onTap: () => ref.read(langProvider.notifier).state = !bn,
             child: Container(
@@ -960,51 +943,78 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-// ---------------------------------------------------------------------------
-// BOTTOM-NAV
-// ---------------------------------------------------------------------------
-
-  Widget _buildBottomNav(bool bn) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, -4))
-        ],
+  // -------------------------------------------------------------------------
+  // FLOATING BOTTOM NAV
+  // -------------------------------------------------------------------------
+  Widget _buildFloatingNav(bool bn) {
+    final items = [
+      (icon: Icons.home_rounded, label: _t(bn, 'হোম', 'Home')),
+      (icon: Icons.store_rounded, label: _t(bn, 'বাজার', 'Market')),
+      (
+        icon: Icons.miscellaneous_services_rounded,
+        label: _t(bn, 'সেবা', 'Services')
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-        child: BottomNavigationBar(
-          currentIndex: _currentTabIndex,
-          onTap: _onTabTapped,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppTheme.primaryGreen,
-          unselectedItemColor: const Color(0xFF9E9E9E),
-          selectedLabelStyle:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 10),
-          unselectedLabelStyle: const TextStyle(fontSize: 10),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          items: [
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.home_outlined),
-                label: _t(bn, 'হোম', 'Home')),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.store_outlined),
-                label: _t(bn, 'বাজার', 'Market')),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.miscellaneous_services_outlined),
-                label: _t(bn, 'সেবা', 'Services')),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.person_outline),
-                label: _t(bn, 'প্রোফাইল', 'Profile')),
-          ],
+      (icon: Icons.person_rounded, label: _t(bn, 'প্রোফাইল', 'Profile')),
+    ];
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+        child: Container(
+          height: 68,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(36),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(items.length, (i) {
+              final item = items[i];
+              final isActive = _currentTabIndex == i;
+              return GestureDetector(
+                onTap: () => _onTabTapped(i),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppTheme.primaryGreen.withValues(alpha: 0.12)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: isActive
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(item.icon,
+                                color: AppTheme.primaryGreen, size: 20),
+                            const SizedBox(width: 6),
+                            Text(
+                              item.label,
+                              style: const TextStyle(
+                                color: AppTheme.primaryGreen,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Icon(item.icon,
+                          color: const Color(0xFF9E9E9E), size: 22),
+                ),
+              );
+            }),
+          ),
         ),
       ),
     );

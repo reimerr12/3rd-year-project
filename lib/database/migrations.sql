@@ -53,45 +53,6 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 
--- ============================================================
--- 002 farms
--- ============================================================
-
-CREATE TABLE farms (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  farmer_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  name           TEXT NOT NULL,
-  area_hectare   NUMERIC(10, 4),
-  soil_type      TEXT,
-  division       TEXT,
-  location_name  TEXT,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_farms_farmer_id ON farms(farmer_id);
-CREATE INDEX idx_farms_division  ON farms(division);
-
-
--- ============================================================
--- 003 farm_logs
--- ============================================================
-
-CREATE TABLE farm_logs (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  farm_id    UUID NOT NULL REFERENCES farms(id) ON DELETE CASCADE,
-  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  log_type   TEXT NOT NULL
-               CHECK (log_type IN (
-                 'weather_event', 'treatment', 'note', 'harvest'
-               )),
-  note       TEXT,
-  photo_url  TEXT,
-  logged_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_farm_logs_farm_id   ON farm_logs(farm_id);
-CREATE INDEX idx_farm_logs_logged_at ON farm_logs(logged_at);
-
 
 -- ============================================================
 -- 004 marketplace — products + orders + cart
@@ -310,25 +271,6 @@ CREATE TABLE guidelines (
 
 CREATE INDEX idx_guidelines_category     ON guidelines(category);
 CREATE INDEX idx_guidelines_is_published ON guidelines(is_published);
-
-
--- ============================================================
--- 011 ai_chat_history
--- ============================================================
-
-CREATE TABLE ai_chat_history (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  session_id  UUID NOT NULL,
-  role        TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-  content     TEXT NOT NULL,
-  tokens_used INTEGER,
-  lang        TEXT DEFAULT 'bn' CHECK (lang IN ('bn', 'en')),
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_ai_chat_user_id    ON ai_chat_history(user_id);
-CREATE INDEX idx_ai_chat_session_id ON ai_chat_history(session_id);
 
 
 -- ============================================================

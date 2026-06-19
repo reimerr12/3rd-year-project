@@ -66,20 +66,11 @@ class _SplashScreen extends StatelessWidget {
           children: [
             Image.asset(
               'assets/images/logo.jpeg',
-              width: 80,
-              height: 80,
+              width: 300,
+              height: 300,
               fit: BoxFit.contain,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'কৃষিবন্ধু',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2E7D32),
-              ),
-            ),
-            const SizedBox(height: 24),
             const CircularProgressIndicator(
               color: Color(0xFF2E7D32),
               strokeWidth: 2.5,

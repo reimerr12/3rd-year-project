@@ -11,7 +11,6 @@ String _t(bool bn, String bangla, String english) => bn ? bangla : english;
 String _price(bool bn, double amount) =>
     bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
 
-// Status label helper — English equivalent of OrderEntry.statusBn
 String _statusLabel(String status, bool bn) {
   switch (status) {
     case 'pending':
@@ -466,12 +465,15 @@ class _OrderCard extends StatelessWidget {
           style: TextStyle(color: Colors.grey.shade700),
         ),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              _t(bn, 'না', 'No'),
-              style: TextStyle(color: Colors.grey.shade600),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
+            child: Text(_t(bn, 'না', 'No')),
           ),
           ElevatedButton(
             onPressed: () {

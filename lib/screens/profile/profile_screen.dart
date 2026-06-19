@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/router.dart';
 import '../../core/theme.dart';
@@ -23,6 +24,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   List<Product> _myListings = [];
   int _soldCount = 0;
   final Set<String> _dismissedOrderIds = {};
+  bool _isUploadingAvatar = false;
 
   @override
   void initState() {
@@ -52,6 +54,82 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case 2:
         Navigator.pushReplacementNamed(context, AppRouter.services);
         break;
+    }
+  }
+
+  Future<void> _pickAndUploadAvatar(bool bn) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined,
+                  color: AppTheme.primaryGreen),
+              title: Text(_t(bn, 'ক্যামেরা', 'Camera')),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined,
+                  color: AppTheme.primaryGreen),
+              title: Text(_t(bn, 'গ্যালারি', 'Gallery')),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: source, imageQuality: 80);
+      if (picked == null || !mounted) return;
+
+      setState(() => _isUploadingAvatar = true);
+
+      final bytes = await picked.readAsBytes();
+      final ext = picked.name.split('.').last.toLowerCase();
+      final url = await SupabaseService.instance.uploadAvatarImage(bytes, ext);
+
+      await SupabaseService.instance.updateProfile(avatarUrl: url);
+      await ref.read(authProvider.notifier).refresh();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              _t(bn, 'প্রোফাইল ছবি আপডেট হয়েছে', 'Profile photo updated')),
+          backgroundColor: AppTheme.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:
+              Text(_t(bn, 'ছবি আপলোড করা যায়নি', 'Could not upload photo')),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
     }
   }
 
@@ -181,7 +259,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(bn),
+      bottomNavigationBar: _buildFloatingNav(bn),
     );
   }
 
@@ -211,30 +289,56 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 10),
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 44,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
-                      backgroundImage:
-                          avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-                      child: avatarUrl.isEmpty
-                          ? const Icon(Icons.person,
-                              size: 44, color: Colors.white70)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: const BoxDecoration(
-                            color: Colors.white, shape: BoxShape.circle),
-                        child: const Icon(Icons.camera_alt,
-                            size: 14, color: AppTheme.primaryGreen),
+                GestureDetector(
+                  onTap: () => _pickAndUploadAvatar(bn),
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 44,
+                        backgroundColor: Colors.white.withValues(alpha: 0.2),
+                        backgroundImage: avatarUrl.isNotEmpty
+                            ? NetworkImage(avatarUrl)
+                            : null,
+                        child: _isUploadingAvatar
+                            ? const SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2.5),
+                              )
+                            : avatarUrl.isEmpty
+                                ? const Icon(Icons.person,
+                                    size: 44, color: Colors.white70)
+                                : null,
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: _isUploadingAvatar
+                                ? Colors.grey.shade300
+                                : Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _isUploadingAvatar
+                                ? Icons.hourglass_empty_rounded
+                                : Icons.camera_alt,
+                            size: 14,
+                            color: AppTheme.primaryGreen,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Padding(
@@ -766,10 +870,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ? 'আপনি কি সত্যিই লগআউট করতে চান?'
             : 'Are you sure you want to log out?'),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(bn ? 'না' : 'Cancel',
-                style: TextStyle(color: Colors.grey.shade600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(bn ? 'না' : 'Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -791,47 +900,75 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildBottomNav(bool bn) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, -4)),
-        ],
+  Widget _buildFloatingNav(bool bn) {
+    final items = [
+      (icon: Icons.home_rounded, label: _t(bn, 'হোম', 'Home')),
+      (icon: Icons.store_rounded, label: _t(bn, 'বাজার', 'Market')),
+      (
+        icon: Icons.miscellaneous_services_rounded,
+        label: _t(bn, 'সেবা', 'Services')
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-        child: BottomNavigationBar(
-          currentIndex: _currentTabIndex,
-          onTap: _onTabTapped,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppTheme.primaryGreen,
-          unselectedItemColor: const Color(0xFF9E9E9E),
-          selectedLabelStyle:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 10),
-          unselectedLabelStyle: const TextStyle(fontSize: 10),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          items: [
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.home_outlined),
-                label: _t(bn, 'হোম', 'Home')),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.store_outlined),
-                label: _t(bn, 'বাজার', 'Market')),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.miscellaneous_services_outlined),
-                label: _t(bn, 'সেবা', 'Services')),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.person_outline),
-                label: _t(bn, 'প্রোফাইল', 'Profile')),
-          ],
+      (icon: Icons.person_rounded, label: _t(bn, 'প্রোফাইল', 'Profile')),
+    ];
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+        child: Container(
+          height: 68,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(36),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(items.length, (i) {
+              final item = items[i];
+              final isActive = _currentTabIndex == i;
+              return GestureDetector(
+                onTap: () => _onTabTapped(i),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppTheme.primaryGreen.withValues(alpha: 0.12)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(28),
+                  ),
+                  child: isActive
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(item.icon,
+                                color: AppTheme.primaryGreen, size: 20),
+                            const SizedBox(width: 6),
+                            Text(
+                              item.label,
+                              style: const TextStyle(
+                                color: AppTheme.primaryGreen,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Icon(item.icon,
+                          color: const Color(0xFF9E9E9E), size: 22),
+                ),
+              );
+            }),
+          ),
         ),
       ),
     );

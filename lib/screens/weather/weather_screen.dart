@@ -37,10 +37,6 @@ String _weatherEmoji(String iconCode) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// in WeatherThemeConfig. The weather model still produces themeConfig for
-// gradient/card colors, but we override the status text here based on bn flag.
-// ---------------------------------------------------------------------------
 String _statusText(String iconCode, double tempCelsius, bool bn) {
   // Match the same override logic as WeatherData.getThemeConfig
   String code = iconCode;

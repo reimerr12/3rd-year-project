@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'dart:io';
-
+import 'dart:typed_data';
 // ------------------------
 // Models
 // ------------------------
@@ -865,6 +865,26 @@ class SupabaseService {
     return _client.storage.from('product-images').getPublicUrl(fileName);
   }
 
+  // =========================================================================
+  // Profile Picture
+  // =========================================================================
+
+  Future<String> uploadAvatarImage(List<int> bytes, String ext) async {
+    final fileName =
+        'avatars/$_uid/${DateTime.now().millisecondsSinceEpoch}.$ext';
+    final uint8Bytes = Uint8List.fromList(bytes);
+
+    await _client.storage.from('profile-images').uploadBinary(
+          fileName,
+          uint8Bytes,
+          fileOptions: FileOptions(
+            contentType: 'image/$ext',
+            upsert: true,
+          ),
+        );
+
+    return _client.storage.from('profile-images').getPublicUrl(fileName);
+  }
   // =========================================================================
   // EQUIPMENT (RENTALS — RENTER / BROWSE SIDE)
   // =========================================================================

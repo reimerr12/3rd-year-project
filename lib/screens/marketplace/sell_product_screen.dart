@@ -52,8 +52,6 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
     super.dispose();
   }
 
-  // ── Image picking ──────────────────────────────────────────
-
   Future<void> _pickImages(bool bn) async {
     if (_pickedImages.length >= _maxImages) return;
 
@@ -63,7 +61,7 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => SafeArea(
         child: Column(
@@ -196,8 +194,6 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
-
-  // ── Build ──────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -364,89 +360,186 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
   // ── Image picker widget ────────────────────────────────────
 
   Widget _buildImagePicker(bool bn) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_pickedImages.isNotEmpty) ...[
-          SizedBox(
-            height: 100,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _pickedImages.length +
-                  (_pickedImages.length < _maxImages ? 1 : 0),
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                if (index == _pickedImages.length) {
-                  return _buildAddMoreTile(bn);
-                }
-                return _buildImageThumbnail(index, bn);
-              },
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          const SizedBox(height: 8),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _t(bn, 'পণ্যের ছবি', 'Product Photos'),
+                style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A)),
+              ),
+              Text(
+                '${_pickedImages.length}/$_maxImages',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: _pickedImages.length == _maxImages
+                        ? AppTheme.primaryGreen
+                        : Colors.grey.shade500,
+                    fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           Text(
-            _t(
-              bn,
-              '${_pickedImages.length}/$_maxImages ছবি যোগ করা হয়েছে',
-              '${_pickedImages.length}/$_maxImages image(s) added',
-            ),
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+            _t(bn, 'প্রথম ছবিটি মূল ছবি হিসেবে দেখানো হবে',
+                'First photo will be shown as the main image'),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
-        ] else
-          GestureDetector(
-            onTap: () => _pickImages(bn),
-            child: Container(
-              height: 140,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.3),
-                  width: 1.5,
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Slot 1 — always visible
+              Expanded(
+                child: _pickedImages.isNotEmpty
+                    ? _buildMainImageSlot(0, bn)
+                    : _buildEmptyMainSlot(bn),
+              ),
+
+              // Slot 2 — appears after slot 1 is filled
+              if (_pickedImages.isNotEmpty) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _pickedImages.length > 1
+                      ? _buildSmallImageSlot(1, bn)
+                      : _buildEmptySmallSlot(bn),
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.add_photo_alternate_outlined,
-                        color: AppTheme.primaryGreen, size: 30),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _t(bn, 'ছবি যোগ করুন', 'Add Photos'),
-                    style: const TextStyle(
-                        color: AppTheme.primaryGreen,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14),
-                  ),
-                  Text(
-                    _t(bn, 'সর্বোচ্চ $_maxImages টি ছবি',
-                        'Maximum $_maxImages photos'),
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                  ),
-                ],
-              ),
+              ],
+
+              // Slot 3 — appears after slot 2 is filled
+              if (_pickedImages.length > 1) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _pickedImages.length > 2
+                      ? _buildSmallImageSlot(2, bn)
+                      : _buildEmptySmallSlot(bn),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainImageSlot(int index, bool bn) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(
+            File(_pickedImages[index].path),
+            height: 160,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
+        ),
+        Positioned(
+          top: 8,
+          left: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGreen,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              _t(bn, 'মূল ছবি', 'Main'),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600),
             ),
           ),
+        ),
+        Positioned(
+          top: 6,
+          right: 6,
+          child: GestureDetector(
+            onTap: () => _removeImage(index),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                  color: Colors.black54, shape: BoxShape.circle),
+              child: const Icon(Icons.close, color: Colors.white, size: 16),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildImageThumbnail(int index, bool bn) {
+  Widget _buildEmptyMainSlot(bool bn) {
+    return GestureDetector(
+      onTap: () => _pickImages(bn),
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryGreen.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add_photo_alternate_outlined,
+                  color: AppTheme.primaryGreen, size: 30),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _t(bn, 'ছবি যোগ করুন', 'Add Photo'),
+              style: const TextStyle(
+                  color: AppTheme.primaryGreen,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _t(bn, 'ট্যাপ করুন', 'Tap to upload'),
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSmallImageSlot(int index, bool bn) {
     return Stack(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Image.file(
             File(_pickedImages[index].path),
-            width: 100,
-            height: 100,
+            height: 160,
+            width: double.infinity,
             fit: BoxFit.cover,
           ),
         ),
@@ -456,59 +549,50 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
           child: GestureDetector(
             onTap: () => _removeImage(index),
             child: Container(
-              padding: const EdgeInsets.all(2),
+              padding: const EdgeInsets.all(3),
               decoration: const BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.close, color: Colors.white, size: 16),
+                  color: Colors.black54, shape: BoxShape.circle),
+              child: const Icon(Icons.close, color: Colors.white, size: 14),
             ),
           ),
         ),
-        if (index == 0)
-          Positioned(
-            bottom: 4,
-            left: 4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                _t(bn, 'মূল', 'Main'),
-                style: const TextStyle(color: Colors.white, fontSize: 10),
-              ),
-            ),
-          ),
       ],
     );
   }
 
-  Widget _buildAddMoreTile(bool bn) {
+  Widget _buildEmptySmallSlot(bool bn) {
     return GestureDetector(
       onTap: () => _pickImages(bn),
       child: Container(
-        width: 100,
-        height: 100,
+        height: 160,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.primaryGreen.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: AppTheme.primaryGreen.withValues(alpha: 0.4),
+            color: AppTheme.primaryGreen.withValues(alpha: 0.3),
             width: 1.5,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add_photo_alternate_outlined,
-                color: AppTheme.primaryGreen, size: 26),
-            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add_photo_alternate_outlined,
+                  color: AppTheme.primaryGreen, size: 20),
+            ),
+            const SizedBox(height: 6),
             Text(
-              _t(bn, 'যোগ করুন', 'Add More'),
-              style:
-                  const TextStyle(color: AppTheme.primaryGreen, fontSize: 11),
+              _t(bn, 'ছবি যোগ করুন', 'Add Photo'),
+              style: const TextStyle(
+                  color: AppTheme.primaryGreen,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

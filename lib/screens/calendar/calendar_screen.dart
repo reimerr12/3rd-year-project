@@ -208,8 +208,9 @@ enum _Status { peak, harvest, cultivation, offSeason }
 
 extension _CropStatus on CropCalendar {
   _Status statusFor(int month) {
-    if (sowMonths.contains(month) && harvestMonths.contains(month))
+    if (sowMonths.contains(month) && harvestMonths.contains(month)) {
       return _Status.peak;
+    }
     if (harvestMonths.contains(month)) return _Status.harvest;
     if (sowMonths.contains(month)) return _Status.cultivation;
     return _Status.offSeason;
@@ -260,8 +261,6 @@ class CalendarScreen extends ConsumerStatefulWidget {
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen>
     with TickerProviderStateMixin {
-  int _currentTabIndex = 0;
-
   late AnimationController _slideCtrl;
   late Animation<Offset> _slideAnim;
   late AnimationController _fadeCtrl;
@@ -292,24 +291,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     super.dispose();
   }
 
-  void _onTabTapped(int index) {
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, AppRouter.home);
-        break;
-      case 1:
-        Navigator.pushReplacementNamed(context, AppRouter.market);
-        break;
-      case 2:
-        Navigator.pushReplacementNamed(context, AppRouter.services);
-        break;
-      case 3:
-        Navigator.pushReplacementNamed(context, AppRouter.profile);
-        break;
-    }
-    setState(() => _currentTabIndex = index);
-  }
-
   void _navigateMonth(int dir) {
     final notifier = ref.read(calendarProvider.notifier);
     final s = ref.read(calendarProvider).valueOrNull;
@@ -333,7 +314,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceGreen,
-      bottomNavigationBar: _buildBottomNav(bn),
       body: async.when(
         loading: () => const _LoadingView(),
         error: (err, _) => _ErrorView(
@@ -355,53 +335,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
               const SliverToBoxAdapter(child: SizedBox(height: 40)),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // ─── BOTTOM NAV ──────────────────────────────────────────────────────────
-  Widget _buildBottomNav(bool bn) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, -4)),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24), topRight: Radius.circular(24)),
-        child: BottomNavigationBar(
-          currentIndex: _currentTabIndex,
-          onTap: _onTabTapped,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: AppTheme.primaryGreen,
-          unselectedItemColor: const Color(0xFF9E9E9E),
-          selectedLabelStyle:
-              const TextStyle(fontWeight: FontWeight.w600, fontSize: 10),
-          unselectedLabelStyle: const TextStyle(fontSize: 10),
-          backgroundColor: Colors.white,
-          elevation: 0,
-          items: [
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.home_outlined),
-                label: bn ? 'হোম' : 'Home'),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.store_outlined),
-                label: bn ? 'বাজার' : 'Market'),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.miscellaneous_services_outlined),
-                label: bn ? 'সেবা' : 'Services'),
-            BottomNavigationBarItem(
-                icon: const Icon(Icons.person_outline),
-                label: bn ? 'প্রোফাইল' : 'Profile'),
-          ],
         ),
       ),
     );
@@ -743,10 +676,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     final hasCultivation = state.sowingThisMonth.isNotEmpty;
 
     Color? dotColor;
-    if (hasPeak)
+    if (hasPeak) {
       dotColor = _statusColors[_Status.peak];
-    else if (hasHarvest)
+    } else if (hasHarvest)
+      // ignore: curly_braces_in_flow_control_structures
       dotColor = _statusColors[_Status.harvest];
+    // ignore: curly_braces_in_flow_control_structures
     else if (hasCultivation) dotColor = _statusColors[_Status.cultivation];
 
     final cells = <Widget>[
