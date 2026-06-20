@@ -1073,7 +1073,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
 
   // ---------------------------------------------------------------------------
-  // Edit profile sheet (unchanged)
+  // Edit profile sheet
   // ---------------------------------------------------------------------------
 
   void _showEditProfile(
@@ -1260,7 +1260,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Logout dialog (unchanged)
+  // Logout dialog
   // ---------------------------------------------------------------------------
 
   void _confirmLogout(BuildContext context, bool bn) {
