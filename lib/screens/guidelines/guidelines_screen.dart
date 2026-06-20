@@ -495,8 +495,9 @@ class _YouTubeEmbeddedPlayerState extends State<YouTubeEmbeddedPlayer> {
   Future<void> _launchExternalVideo() async {
     final Uri url =
         Uri.parse('https://www.youtube.com/watch?v=${widget.videoId}');
-    if (await canLaunchUrl(url))
+    if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override

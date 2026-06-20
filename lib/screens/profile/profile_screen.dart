@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/router.dart';
 import '../../core/theme.dart';
@@ -8,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/marketplace_provider.dart';
 import '../../providers/lang_provider.dart';
 import '../../models/product.dart';
+import '../../models/rental.dart';
 import '../../services/supabase_service.dart';
 
 String _t(bool bn, String bangla, String english) => bn ? bangla : english;
@@ -22,6 +24,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   static const int _currentTabIndex = 3;
   List<Product> _myListings = [];
+  List<BookingModel> _myBookings = [];
   int _soldCount = 0;
   final Set<String> _dismissedOrderIds = {};
   bool _isUploadingAvatar = false;
@@ -32,10 +35,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     Future.microtask(() async {
       final notifier = ref.read(marketplaceProvider.notifier);
       await notifier.loadOrders();
-      final listings = await notifier.fetchMyListings();
+
+      final results = await Future.wait([
+        notifier.fetchMyListings(),
+        SupabaseService.instance.fetchMyBookings(),
+      ]);
+
       if (mounted) {
         setState(() {
-          _myListings = listings;
+          _myListings = results[0] as List<Product>;
+          _myBookings = results[1] as List<BookingModel>;
           _soldCount = notifier.myListingsSoldCount;
         });
       }
@@ -133,6 +142,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Booking helpers
+  // ---------------------------------------------------------------------------
+
+  int get _activeBookingsCount => _myBookings.where((b) {
+        final s = BookingStatus.fromValue(b.status);
+        return s != BookingStatus.cancelled && s != BookingStatus.completed;
+      }).length;
+
+  Color _bookingStatusColor(String status) {
+    switch (BookingStatus.fromValue(status)) {
+      case BookingStatus.pending:
+        return Colors.orange;
+      case BookingStatus.confirmed:
+        return const Color(0xFF3B82F6);
+      case BookingStatus.active:
+        return AppTheme.primaryGreen;
+      case BookingStatus.completed:
+        return Colors.grey;
+      case BookingStatus.cancelled:
+        return Colors.red;
+    }
+  }
+
+  String _bookingStatusLabel(String status, bool bn) {
+    final s = BookingStatus.fromValue(status);
+    return bn ? s.labelBn : s.labelEn;
+  }
+
+  String _paymentStatusLabel(String status, bool bn) {
+    final s = PaymentStatus.fromValue(status);
+    return bn ? s.labelBn : s.labelEn;
+  }
+
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final bn = ref.watch(langProvider);
@@ -184,6 +229,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             activeOrders > 0 ? _Badge('$activeOrders') : null,
                         onTap: () =>
                             Navigator.pushNamed(context, AppRouter.orders),
+                      ),
+                      _MenuItem(
+                        icon: Icons.agriculture_outlined,
+                        iconColor: const Color(0xFF16A34A),
+                        label: bn ? 'আমার বুকিং' : 'My Bookings',
+                        sublabel: _myBookings.isEmpty
+                            ? (bn ? 'কোনো বুকিং নেই' : 'No bookings')
+                            : '${_myBookings.length}${bn ? 'টি বুকিং' : ' bookings'}'
+                                '${_activeBookingsCount > 0 ? ' · $_activeBookingsCount ${bn ? "টি সক্রিয়" : "active"}' : ''}',
+                        trailing: _activeBookingsCount > 0
+                            ? _Badge('$_activeBookingsCount')
+                            : null,
+                        onTap: () => _showMyBookings(context, _myBookings, bn),
                       ),
                       _MenuItem(
                         icon: Icons.shopping_cart_outlined,
@@ -262,6 +320,332 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       bottomNavigationBar: _buildFloatingNav(bn),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // My Bookings sheet
+  // ---------------------------------------------------------------------------
+
+  void _showMyBookings(
+      BuildContext context, List<BookingModel> bookings, bool bn) {
+    final dateFmt = DateFormat('d MMM yyyy');
+    final currFmt =
+        NumberFormat.currency(locale: 'en_BD', symbol: '৳', decimalDigits: 0);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        builder: (_, controller) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      bn ? 'আমার বুকিং' : 'My Bookings',
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${bookings.length} ${bn ? "টি" : "total"}',
+                        style: const TextStyle(
+                          color: AppTheme.primaryGreen,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: Colors.grey.shade200),
+              Expanded(
+                child: bookings.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.agriculture_outlined,
+                                size: 56, color: Colors.grey.shade300),
+                            const SizedBox(height: 12),
+                            Text(
+                              bn ? 'এখনো কোনো বুকিং করেননি' : 'No bookings yet',
+                              style: TextStyle(
+                                  color: Colors.grey.shade500, fontSize: 15),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: controller,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: bookings.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (_, i) {
+                          final b = bookings[i];
+                          final eq = b.equipment;
+                          final statusColor = _bookingStatusColor(b.status);
+                          final paymentPaid =
+                              PaymentStatus.fromValue(b.paymentStatus) ==
+                                  PaymentStatus.paid;
+
+                          return Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Header: icon + name + status badge
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryGreen
+                                            .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.agriculture,
+                                        color: AppTheme.primaryGreen,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        eq?.name ??
+                                            (bn ? 'সরঞ্জাম' : 'Equipment'),
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            statusColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                            color: statusColor.withValues(
+                                                alpha: 0.35)),
+                                      ),
+                                      child: Text(
+                                        _bookingStatusLabel(b.status, bn),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: statusColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 10),
+                                Divider(height: 1, color: Colors.grey.shade200),
+                                const SizedBox(height: 10),
+
+                                // Dates row
+                                Row(
+                                  children: [
+                                    const Icon(Icons.calendar_month,
+                                        size: 14,
+                                        color: AppTheme.textSecondary),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${dateFmt.format(b.startDate)}  →  ${dateFmt.format(b.endDate)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${b.durationDays} ${bn ? "দিন" : "days"}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 8),
+
+                                // Cost + payment row
+                                Row(
+                                  children: [
+                                    const Icon(Icons.payments_outlined,
+                                        size: 14,
+                                        color: AppTheme.textSecondary),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      currFmt.format(b.totalCost),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.primaryGreen,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    // Payment method chip
+                                    if (b.paymentMethod != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE2136E)
+                                              .withValues(alpha: 0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(5),
+                                        ),
+                                        child: Text(
+                                          b.paymentMethod == 'bkash'
+                                              ? 'bKash'
+                                              : (bn ? 'নগদ' : 'Cash'),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: b.paymentMethod == 'bkash'
+                                                ? const Color(0xFFE2136E)
+                                                : const Color(0xFF2E7D32),
+                                          ),
+                                        ),
+                                      ),
+                                    const SizedBox(width: 6),
+                                    // Paid/unpaid badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 7, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: paymentPaid
+                                            ? AppTheme.primaryGreen
+                                                .withValues(alpha: 0.1)
+                                            : Colors.orange
+                                                .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      child: Text(
+                                        _paymentStatusLabel(
+                                            b.paymentStatus, bn),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: paymentPaid
+                                              ? AppTheme.primaryGreen
+                                              : Colors.orange,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                // Location (if available)
+                                if (eq?.locationText != null ||
+                                    eq?.division != null) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.location_on,
+                                          size: 13,
+                                          color: AppTheme.textSecondary),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          [eq?.locationText, eq?.division]
+                                              .whereType<String>()
+                                              .join(', '),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+
+                                // Notes (if any)
+                                if (b.notes != null && b.notes!.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.notes,
+                                          size: 13,
+                                          color: AppTheme.textSecondary),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          b.notes!,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sliver header
+  // ---------------------------------------------------------------------------
 
   Widget _buildSliverHeader({
     required String name,
@@ -380,6 +764,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Stats row
+  // ---------------------------------------------------------------------------
+
   Widget _buildStatsRow(
       int totalOrders, int activeOrders, int listings, bool bn) {
     return IntrinsicHeight(
@@ -407,6 +795,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Menu section
+  // ---------------------------------------------------------------------------
 
   Widget _buildMenuSection(
       {required String title, required List<_MenuItem> items}) {
@@ -490,6 +882,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // My Listings sheet (unchanged)
+  // ---------------------------------------------------------------------------
 
   void _showMyListings(
       BuildContext context, List<dynamic> listings, int soldCount, bool bn) {
@@ -676,6 +1072,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: const Icon(Icons.image_outlined, color: Colors.grey),
       );
 
+  // ---------------------------------------------------------------------------
+  // Edit profile sheet (unchanged)
+  // ---------------------------------------------------------------------------
+
   void _showEditProfile(
     BuildContext context, {
     required String name,
@@ -859,6 +1259,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Logout dialog (unchanged)
+  // ---------------------------------------------------------------------------
+
   void _confirmLogout(BuildContext context, bool bn) {
     showDialog(
       context: context,
@@ -899,6 +1303,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Floating nav (unchanged)
+  // ---------------------------------------------------------------------------
 
   Widget _buildFloatingNav(bool bn) {
     final items = [
@@ -974,6 +1382,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
+
+// =============================================================================
+// Helper widgets
+// =============================================================================
 
 class _StatCard extends StatelessWidget {
   final String value;

@@ -690,7 +690,7 @@ class _SellProductScreenState extends ConsumerState<SellProductScreen> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: _selectedCategory,
+          initialValue: _selectedCategory,
           items: _categories
               .map((c) => DropdownMenuItem(
                     value: c.key,

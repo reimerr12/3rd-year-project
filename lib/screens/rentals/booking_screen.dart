@@ -1,10 +1,7 @@
-// lib/screens/rentals/booking_screen.dart
-
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants.dart';
@@ -22,9 +19,9 @@ Future<LatLng?> _geocodeLocation(String query) async {
     final encoded = Uri.encodeComponent(query);
     final url =
         'https://maps.googleapis.com/maps/api/geocode/json?address=$encoded&region=BD&key=${AppConstants.googleMapsApiKey}';
-    final res = await http.get(Uri.parse(url));
+    final res = await Dio().get(url);
     if (res.statusCode != 200) return null;
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final body = res.data as Map<String, dynamic>;
     final results = body['results'] as List?;
     if (results == null || results.isEmpty) return null;
     final loc = (results.first as Map)['geometry']['location'];

@@ -411,8 +411,9 @@ class SupabaseService {
         if (authUser != null) break;
       }
     }
-    if (authUser == null)
+    if (authUser == null) {
       throw Exception('createProfile: no authenticated user');
+    }
 
     final data = await _client
         .from('profiles')
@@ -438,8 +439,9 @@ class SupabaseService {
     String? avatarUrl,
   }) async {
     final authUser = _client.auth.currentUser;
-    if (authUser == null)
+    if (authUser == null) {
       throw Exception('updateProfile: no authenticated user');
+    }
 
     final updates = <String, dynamic>{};
     if (name != null) updates['name'] = name;
