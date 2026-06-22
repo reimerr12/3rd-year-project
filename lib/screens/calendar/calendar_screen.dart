@@ -7,9 +7,7 @@ import '../../models/crop_calendar.dart';
 import '../../providers/calendar_provider.dart';
 import '../../core/router.dart';
 
-// ════════════════════════════════════════════════════════════════════════════
 // BANGLA CALENDAR HELPER
-// ════════════════════════════════════════════════════════════════════════════
 
 class _BanglaHelper {
   static String digits(int n) {
@@ -151,13 +149,6 @@ class _BanglaHelper {
     };
   }
 
-  // Bengali seasons (Gregorian month approximations):
-  //   গ্রীষ্মকাল  Grishmo  · Summer      → Apr–May  (4–5)
-  //   বর্ষাকাল   Borsha   · Monsoon     → Jun–Aug  (6–8)
-  //   শরৎকাল    Shorot   · Autumn      → Sep–Oct  (9–10)
-  //   হেমন্তকাল  Hemonto  · Late Autumn → Nov–Dec  (11–12)
-  //   শীতকাল    Sheet    · Winter      → Jan      (1)
-  //   বসন্তকাল  Boshonto · Spring      → Feb–Mar  (2–3)
   static String seasonBn(int m) {
     if (m == 4 || m == 5) return 'গ্রীষ্মকাল';
     if (m >= 6 && m <= 8) return 'বর্ষাকাল';
@@ -200,9 +191,7 @@ class _BanglaHelper {
   static String dayBn(int weekday) => _bnDayNames[weekday - 1];
 }
 
-// ════════════════════════════════════════════════════════════════════════════
 // STATUS HELPERS
-// ════════════════════════════════════════════════════════════════════════════
 
 enum _Status { peak, harvest, cultivation, offSeason }
 
@@ -248,9 +237,7 @@ IconData _categoryIcon(CropCategory c) => switch (c) {
       CropCategory.other => Icons.grass_rounded,
     };
 
-// ════════════════════════════════════════════════════════════════════════════
 // SCREEN ROOT
-// ════════════════════════════════════════════════════════════════════════════
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -340,7 +327,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 1. APP BAR ──────────────────────────────────────────────────────────
+  //APP BAR
   Widget _buildAppBar(CalendarState state, bool bn) {
     return SliverAppBar(
       pinned: true,
@@ -371,7 +358,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 2. DUAL MONTH HEADER ────────────────────────────────────────────────
+  //DUAL MONTH HEADER
   Widget _buildDualMonthHeader(CalendarState state, bool bn) {
     final b1 = _BanglaHelper.convert(
         DateTime(state.focusedYear, state.focusedMonth, 1));
@@ -458,7 +445,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 3. SEASON BANNER ────────────────────────────────────────────────────
+  //SEASON BANNER
   Widget _buildSeasonBanner(CalendarState state, bool bn) {
     final cropCount = state.activeThisMonth.length;
     return Padding(
@@ -516,7 +503,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 4. CATEGORY FILTER ──────────────────────────────────────────────────
+  //CATEGORY FILTER
   Widget _buildCategoryFilter(CalendarState state, bool bn) {
     final cats = [
       null,
@@ -602,7 +589,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 5. CALENDAR CARD ────────────────────────────────────────────────────
+  //CALENDAR CARD
   Widget _buildCalendarCard(CalendarState state, bool bn) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -763,7 +750,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 6. MONTH CROP OVERVIEW ──────────────────────────────────────────────
+  //MONTH CROP OVERVIEW
   Widget _buildMonthCropOverview(CalendarState state, bool bn) {
     final crops = state.activeThisMonth
         .where((c) =>
@@ -823,7 +810,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── 7. DATE DETAIL PANEL ────────────────────────────────────────────────
+  // DATE DETAIL PANEL
   Widget _buildDateDetailPanel(CalendarState state, bool bn) {
     final day = state.selectedDay!;
     final date = DateTime(state.focusedYear, state.focusedMonth, day);
@@ -955,7 +942,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
-  // ─── HELPERS ─────────────────────────────────────────────────────────────
+  //HELPERS
   static const _monthsEn = [
     'January',
     'February',
@@ -988,10 +975,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
   String _monthNameEn(int m) => _monthsEn[m - 1];
   String _monthNameBn(int m) => _monthsBn[m - 1];
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// DAY CELL
-// ════════════════════════════════════════════════════════════════════════════
 
 class _DayCell extends StatelessWidget {
   const _DayCell({
@@ -1082,10 +1065,6 @@ class _DayCell extends StatelessWidget {
   }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// CROP STATUS TILE
-// ════════════════════════════════════════════════════════════════════════════
-
 class _CropStatusTile extends StatelessWidget {
   const _CropStatusTile(
       {required this.crop, required this.status, required this.isBangla});
@@ -1133,10 +1112,6 @@ class _CropStatusTile extends StatelessWidget {
     );
   }
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// DETAILED CROP CARD
-// ════════════════════════════════════════════════════════════════════════════
 
 class _DetailedCropCard extends StatelessWidget {
   const _DetailedCropCard(
@@ -1211,10 +1186,6 @@ class _DetailedCropCard extends StatelessWidget {
     );
   }
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-// CROP IMAGE
-// ════════════════════════════════════════════════════════════════════════════
 
 class _CropImage extends StatelessWidget {
   const _CropImage(

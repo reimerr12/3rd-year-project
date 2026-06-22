@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/product.dart';
@@ -8,7 +7,6 @@ import '../../providers/lang_provider.dart';
 import '../../providers/marketplace_provider.dart';
 
 String _t(bool bn, String bangla, String english) => bn ? bangla : english;
-
 String _price(bool bn, double amount) =>
     bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
 
@@ -68,7 +66,7 @@ void _showAddedToCartSnackBar(BuildContext context, Product product, bool bn) {
   );
 }
 
-// ── Category Chip ──────────────────────────────────────────────
+// Category Chip
 class _CategoryChip extends StatefulWidget {
   final String label;
   final bool isSelected;
@@ -476,7 +474,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   }
 }
 
-// ── Product Card ───────────────────────────────────────────────
+// Product Card
 class _ProductCard extends StatefulWidget {
   final Product product;
   final bool bn;

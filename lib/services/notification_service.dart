@@ -1,9 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ---------------------------------------------------------------------------
-// NotificationModel
-// ---------------------------------------------------------------------------
-
 class NotificationModel {
   final String id;
   final String userId;
@@ -11,7 +7,7 @@ class NotificationModel {
   final String titleBn;
   final String bodyEn;
   final String bodyBn;
-  final String type; // 'weather' | 'system' | 'booking' | 'order'
+  final String type;
   final bool isRead;
   final DateTime createdAt;
 
@@ -45,9 +41,7 @@ class NotificationModel {
   String body(bool isBn) => isBn ? bodyBn : bodyEn;
 }
 
-// ---------------------------------------------------------------------------
 // NotificationService
-// ---------------------------------------------------------------------------
 
 class NotificationService {
   NotificationService._();
@@ -56,10 +50,7 @@ class NotificationService {
 
   SupabaseClient get _client => Supabase.instance.client;
 
-  // =========================================================================
   // FETCH
-  // =========================================================================
-
   Future<List<NotificationModel>> fetchNotifications(String userId) async {
     final data = await _client
         .from('notifications')
@@ -83,10 +74,7 @@ class NotificationService {
     return (data as List).length;
   }
 
-  // =========================================================================
   // MARK READ
-  // =========================================================================
-
   Future<void> markAsRead(String notificationId) async {
     await _client
         .from('notifications')
@@ -101,11 +89,6 @@ class NotificationService {
         .eq('is_read', false);
   }
 
-  // =========================================================================
-  // GENERATE — called on app open from notifications_provider
-  // =========================================================================
-
-  /// Entry point. Runs weather + crop checks, inserts non-duplicate rows.
   Future<void> generateNotifications({
     required String userId,
     required Map<String, dynamic>? weatherData,
@@ -122,10 +105,7 @@ class NotificationService {
     ]);
   }
 
-  // =========================================================================
   // WEATHER CHECK
-  // =========================================================================
-
   Future<void> _checkWeather({
     required String userId,
     required Map<String, dynamic> weatherData,
@@ -142,7 +122,6 @@ class NotificationService {
         type: 'weather',
       );
 
-      // Also write to weather_alerts table if we have a division
       if (division != null) {
         await _upsertWeatherAlert(
           division: division,
@@ -155,14 +134,12 @@ class NotificationService {
     }
   }
 
-  /// Inspects hourly forecast data from OWM and returns alert maps.
   List<Map<String, String>> _extractWeatherAlerts(
       Map<String, dynamic> weatherData) {
     final alerts = <Map<String, String>>[];
 
-    // Pull hourly list — OWM /forecast returns { list: [...] }
     final hourlyList = weatherData['list'] as List? ?? [];
-    final next6h = hourlyList.take(2).toList(); // 2 × 3hr slots = 6hrs
+    final next6h = hourlyList.take(2).toList();
 
     double maxRainMm = 0;
     double maxWindMs = 0;
@@ -238,8 +215,6 @@ class NotificationService {
     required String messageBn,
     required String severity,
   }) async {
-    // weather_alerts table has title/body as single `message` TEXT column
-    // store EN version there; BN is in notifications table
     try {
       await _client.from('weather_alerts').insert({
         'division': division,
@@ -247,21 +222,15 @@ class NotificationService {
         'message': messageEn,
         'severity': severity,
       });
-    } catch (_) {
-      // Non-critical — don't crash notification flow
-    }
+    } catch (_) {}
   }
 
-  // =========================================================================
   // CROP CALENDAR CHECK
-  // =========================================================================
-
   Future<void> _checkCropCalendar({required String userId}) async {
     final now = DateTime.now();
     final currentMonth = now.month;
 
     try {
-      // Fetch crops where current month is in sow_months or harvest_months
       final sowData = await _client
           .from('crop_calendar')
           .select('crop_name_en, crop_name_bn')
@@ -309,14 +278,8 @@ class NotificationService {
           type: 'system',
         );
       }
-    } catch (_) {
-      // Non-critical
-    }
+    } catch (_) {}
   }
-
-  // =========================================================================
-  // DEDUP INSERT — skips if same type + title_en exists today
-  // =========================================================================
 
   Future<void> _insertIfNew({
     required String userId,
@@ -337,12 +300,12 @@ class NotificationService {
         .select('id')
         .eq('user_id', userId)
         .eq('type', type)
-        .eq('title', titleEn) // title column stores EN value
+        .eq('title', titleEn)
         .gte('created_at', startOfDay)
         .lte('created_at', endOfDay)
         .maybeSingle();
 
-    if (existing != null) return; // already inserted today
+    if (existing != null) return;
 
     await _client.from('notifications').insert({
       'user_id': userId,

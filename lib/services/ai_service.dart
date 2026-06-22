@@ -1,10 +1,7 @@
 import 'package:dio/dio.dart';
 import '../core/constants.dart';
 
-// ---------------------------------------------------------------------------
 // Message model
-// ---------------------------------------------------------------------------
-
 enum MessageRole { user, model }
 
 class ChatMessage {
@@ -19,9 +16,7 @@ class ChatMessage {
   });
 }
 
-// ---------------------------------------------------------------------------
-// AiService — singleton
-// ---------------------------------------------------------------------------
+// AiService
 
 class AiService {
   AiService._();

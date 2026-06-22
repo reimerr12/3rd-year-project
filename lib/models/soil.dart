@@ -5,7 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme.dart';
 import '../../core/router.dart';
 
-// ── Model ──────────────────────────────────────────────────────
+//Model
 class SoilEntry {
   final String id;
   final String division;

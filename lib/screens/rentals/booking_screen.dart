@@ -20,7 +20,6 @@ Future<LatLng?> _geocodeLocation(String query) async {
     final url =
         'https://maps.googleapis.com/maps/api/geocode/json?address=$encoded&region=BD&key=${AppConstants.googleMapsApiKey}';
     final res = await Dio().get(url);
-    if (res.statusCode != 200) return null;
     final body = res.data as Map<String, dynamic>;
     final results = body['results'] as List?;
     if (results == null || results.isEmpty) return null;
@@ -51,7 +50,6 @@ const _kDivisionCoords = {
   'Mymensingh': LatLng(24.7471, 90.4203),
 };
 
-// Shared payment option definition — matches payment_screen style exactly
 const _kPaymentOptions = [
   (
     id: 'bkash',
@@ -73,10 +71,7 @@ const _kPaymentOptions = [
   ),
 ];
 
-// ===========================================================================
 // BOOKING SCREEN
-// ===========================================================================
-
 class BookingScreen extends ConsumerStatefulWidget {
   final EquipmentModel equipment;
   final bool bn;
@@ -212,10 +207,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     });
   }
 
-  // -------------------------------------------------------------------------
   // Main confirm handler
-  // -------------------------------------------------------------------------
-
   Future<void> _confirmBooking() async {
     if (!_canBook) return;
     if (_selectedPayment == 'bkash') {
@@ -225,10 +217,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     }
   }
 
-  // -------------------------------------------------------------------------
   // bKash flow
-  // -------------------------------------------------------------------------
-
   Future<void> _confirmWithBkash() async {
     setState(() => _isLoading = true);
 
@@ -258,19 +247,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
       setState(() => _isLoading = true);
 
-      // ignore: unused_local_variable
-      final booking = await SupabaseService.instance.placeBooking(
-        equipmentId: eq.id,
-        ratePerDay: eq.ratePerDay,
-        startDate: _startDate!,
-        endDate: _endDate!,
-        notes: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
-        paymentMethod: 'bkash',
-        transactionId: trxId,
-      );
-
       ref.invalidate(myBookingsProvider);
 
       if (!mounted) return;
@@ -287,10 +263,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     }
   }
 
-  // -------------------------------------------------------------------------
   // Cash flow
-  // -------------------------------------------------------------------------
-
   Future<void> _confirmDirect() async {
     setState(() => _isLoading = true);
     try {
@@ -318,10 +291,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     }
   }
 
-  // -------------------------------------------------------------------------
   // Success dialog
-  // -------------------------------------------------------------------------
-
   void _showSuccessDialog({String? trxId}) {
     final nav = Navigator.of(context);
 
@@ -444,7 +414,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Equipment summary card
             _EquipmentSummaryCard(
               equipment: eq,
               bn: bn,
@@ -454,7 +423,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Booked dates
             if (_bookingsLoading)
               const Center(
                 child: Padding(
@@ -470,7 +438,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               const SizedBox(height: 20),
             ],
 
-            // Date selection
             _SectionHeader(
                 title: _t(bn, 'তারিখ নির্বাচন করুন', 'Select Dates')),
             const SizedBox(height: 8),
@@ -511,7 +478,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               ),
             const SizedBox(height: 20),
 
-            // Cost summary
             _SectionHeader(title: _t(bn, 'খরচের সারসংক্ষেপ', 'Cost Summary')),
             const SizedBox(height: 8),
             _CostSummaryCard(
@@ -522,7 +488,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Payment method — now matches payment_screen animated card style
             _buildCard(
               title: _t(bn, 'পেমেন্ট পদ্ধতি', 'Payment Method'),
               child: Column(

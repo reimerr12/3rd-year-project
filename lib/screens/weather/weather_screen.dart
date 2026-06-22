@@ -6,9 +6,8 @@ import '../../models/weather.dart';
 import '../../providers/weather_provider.dart';
 import '../../providers/lang_provider.dart';
 
-// ---------------------------------------------------------------------------
 // Emoji helper — day/night aware
-// ---------------------------------------------------------------------------
+
 String _weatherEmoji(String iconCode) {
   if (iconCode.length < 2) return '🌤️';
   final core = iconCode.substring(0, 2);
@@ -38,7 +37,6 @@ String _weatherEmoji(String iconCode) {
 }
 
 String _statusText(String iconCode, double tempCelsius, bool bn) {
-  // Match the same override logic as WeatherData.getThemeConfig
   String code = iconCode;
   if (code == '04d' && tempCelsius > 32) code = '02d';
 
@@ -103,7 +101,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen>
   @override
   Widget build(BuildContext context) {
     final weatherAsync = ref.watch(weatherProvider);
-    // receive `bn` as a parameter so they react correctly on toggle.
+
     final bn = ref.watch(langProvider);
 
     return Scaffold(

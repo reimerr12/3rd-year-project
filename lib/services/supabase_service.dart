@@ -1,10 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import 'dart:io';
 import 'dart:typed_data';
-// ------------------------
-// Models
-// ------------------------
 
+// Models
 class AppUser {
   final String id;
   final String? email;
@@ -274,9 +272,7 @@ class BookingModel {
   }
 }
 
-//-----------
 // DOCTORS
-//-----------
 
 class DoctorModel {
   final String id;
@@ -319,10 +315,7 @@ class DoctorModel {
   }
 }
 
-// ---------------------------------------------------------------------------
 // SupabaseService — singleton
-// ---------------------------------------------------------------------------
-
 class SupabaseService {
   SupabaseService._();
   static final SupabaseService instance = SupabaseService._();
@@ -339,10 +332,7 @@ class SupabaseService {
 
   String? get currentUid => _client.auth.currentUser?.id;
 
-  // =========================================================================
   // AUTH
-  // =========================================================================
-
   Future<void> requestPhoneOtp(String phone) async {
     await _client.auth.signInWithOtp(phone: phone);
   }
@@ -392,9 +382,7 @@ class SupabaseService {
     });
   }
 
-  // =========================================================================
   // PROFILE
-  // =========================================================================
 
   Future<AppUser> createProfile({
     required String name,
@@ -478,9 +466,7 @@ class SupabaseService {
     return AppUser.fromMap(data, authUser);
   }
 
-  // =========================================================================
   // PRODUCTS
-  // =========================================================================
 
   Future<List<ProductModel>> fetchProducts({
     int from = 0,
@@ -553,10 +539,7 @@ class SupabaseService {
         .eq('seller_id', _uid);
   }
 
-  // =========================================================================
   // CART
-  // =========================================================================
-
   Future<List<CartItemModel>> fetchCart() async {
     final data = await _client
         .from('cart_items')
@@ -629,9 +612,7 @@ class SupabaseService {
     await _client.from('cart_items').delete().eq('user_id', _uid);
   }
 
-  // =========================================================================
   // ORDERS
-  // =========================================================================
 
   Future<OrderModel> placeOrder({
     required String productId,
@@ -728,8 +709,6 @@ class SupabaseService {
         .eq('buyer_id', _uid);
   }
 
-  /// Permanently deletes a cancelled order from the buyer's view.
-  /// Only works if the order belongs to the current user and is cancelled.
   Future<void> deleteOrderAsBuyer({required String orderId}) async {
     await _client
         .from('orders')
@@ -739,9 +718,7 @@ class SupabaseService {
         .eq('status', 'cancelled');
   }
 
-  // =========================================================================
   // EQUIPMENT (RENTALS — OWNER SIDE)
-  // =========================================================================
 
   Future<List<EquipmentModel>> fetchMyEquipmentListings() async {
     final data = await _client
@@ -867,10 +844,7 @@ class SupabaseService {
     return _client.storage.from('product-images').getPublicUrl(fileName);
   }
 
-  // =========================================================================
   // Profile Picture
-  // =========================================================================
-
   Future<String> uploadAvatarImage(List<int> bytes, String ext) async {
     final fileName =
         'avatars/$_uid/${DateTime.now().millisecondsSinceEpoch}.$ext';
@@ -887,9 +861,7 @@ class SupabaseService {
 
     return _client.storage.from('profile-images').getPublicUrl(fileName);
   }
-  // =========================================================================
   // EQUIPMENT (RENTALS — RENTER / BROWSE SIDE)
-  // =========================================================================
 
   Future<List<EquipmentModel>> fetchEquipment({
     int from = 0,
@@ -915,10 +887,7 @@ class SupabaseService {
     return EquipmentModel.fromMap(data);
   }
 
-  // =========================================================================
   // BOOKINGS
-  // =========================================================================
-
   Future<BookingModel> placeBooking({
     required String equipmentId,
     required double ratePerDay,
@@ -1061,9 +1030,7 @@ class SupabaseService {
         .eq('renter_id', _uid);
   }
 
-  // =========================================================================
   // DOCTOR
-  // =========================================================================
 
   Future<List<DoctorModel>> fetchDoctors({
     int from = 0,

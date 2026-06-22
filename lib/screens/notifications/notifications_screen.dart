@@ -93,10 +93,7 @@ class NotificationsScreen extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Tile
-// ---------------------------------------------------------------------------
-
 class _NotificationTile extends StatelessWidget {
   final NotificationModel notification;
   final bool isBn;
@@ -249,10 +246,7 @@ class _NotificationTile extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Empty / Error states
-// ---------------------------------------------------------------------------
-
+// Empty  Error states
 class _EmptyState extends StatelessWidget {
   final bool isBn;
   const _EmptyState({required this.isBn});

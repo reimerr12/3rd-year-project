@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Localized real-time weather observation data packet structure.
 class CurrentWeather {
   final String cityName;
   final String country;
@@ -142,7 +141,6 @@ class DailyForecast {
   }
 }
 
-/// Configuration settings holding specific asset definitions for lookups.
 class WeatherThemeConfig {
   final List<Color> gradient;
   final Color cardBackground;
@@ -157,7 +155,6 @@ class WeatherThemeConfig {
   });
 }
 
-/// Complete weather aggregate collection.
 class WeatherData {
   final CurrentWeather current;
   final List<HourlyWeather> hourly;
@@ -171,16 +168,13 @@ class WeatherData {
 
   List<HourlyWeather> get next9Hours => hourly.take(9).toList();
 
-  ///dynamic interface style attributes.
   static WeatherThemeConfig getThemeConfig(String iconCode,
       {double tempCelsius = 0}) {
-    // Hot + broken clouds (04d) → treat as warm hazy day visually
     if (iconCode == '04d' && tempCelsius > 32) iconCode = '02d';
 
     final isNight = iconCode.endsWith('n');
     final coreCode = iconCode.length >= 2 ? iconCode.substring(0, 2) : '01';
 
-    // 1. Night Scene Styling Fallbacks
     if (isNight) {
       if (coreCode == '09' || coreCode == '10' || coreCode == '11') {
         return WeatherThemeConfig(
@@ -198,7 +192,6 @@ class WeatherData {
       );
     }
 
-    // 2. Daytime Scene Transitions
     switch (coreCode) {
       case '01':
         return WeatherThemeConfig(
@@ -289,7 +282,6 @@ class WeatherData {
     return output;
   }
 
-  /// Maps a raw OpenWeather icon code snippet to a highly visible short single-word label.
   static String getShortBanglaCondition(String iconCode) {
     if (iconCode.length < 2) return 'মেঘ';
     final coreCode = iconCode.substring(0, 2);
@@ -325,7 +317,6 @@ class WeatherData {
     return 'Cloud';
   }
 
-  /// Explicit fallback dictionary matching detailed text payloads from the server interface.
   static String translateCondition(String text) {
     final clean = text.toLowerCase().trim();
     final Map<String, String> dict = {

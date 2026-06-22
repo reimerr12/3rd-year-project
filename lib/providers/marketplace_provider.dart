@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/product.dart';
 import '../services/supabase_service.dart';
 
-// ── Cart item ──────────────────────────────────────────────────
+//Cart item
 class CartItem {
   final String cartItemId;
   final Product product;
@@ -20,7 +20,7 @@ class CartItem {
       );
 }
 
-// ── Order entry ────────────────────────────────────────────────
+//Order entry
 class OrderEntry {
   final String id;
   final Product product;
@@ -104,7 +104,7 @@ class OrderEntry {
   }
 }
 
-// ── State ──────────────────────────────────────────────────────
+//State
 class MarketplaceState {
   final List<Product> products;
   final List<CartItem> cart;
@@ -148,7 +148,7 @@ class MarketplaceState {
       );
 }
 
-// ── Notifier ──────//
+//Notifier
 class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
   MarketplaceNotifier() : super(const MarketplaceState()) {
     loadProducts();
@@ -156,7 +156,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
 
   final _service = SupabaseService();
 
-  // ── Products ─────//
+  // Products
   Future<void> loadProducts({String? category}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -177,7 +177,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
 
   List<Product> get filteredProducts => state.products;
 
-  // ── Cart ────//
+  // Cart
   Future<void> loadCart() async {
     state = state.copyWith(isCartLoading: true);
     try {
@@ -264,7 +264,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     }
   }
 
-  // ── Orders ─────//
+  // Orders
   Future<void> loadOrders() async {
     state = state.copyWith(isOrdersLoading: true);
     try {
@@ -369,16 +369,13 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     }
   }
 
-  /// Permanently removes a cancelled order from Supabase and local state.
   Future<void> removeOrder(String orderId) async {
-    // Optimistic: remove from local state immediately so UI updates instantly
     state = state.copyWith(
       orders: state.orders.where((o) => o.id != orderId).toList(),
     );
     try {
       await _service.deleteOrderAsBuyer(orderId: orderId);
     } catch (_) {
-      // If delete fails, reload to restore accurate state
       await loadOrders();
     }
   }
@@ -387,7 +384,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     await addToCart(order.product);
   }
 
-  // ── Sell: add new product ─────────//
+  //Sell
   Future<void> addProduct({
     required String title,
     String? description,
@@ -413,7 +410,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
     }
   }
 
-  // ── My listings ──────//
+  //My listings
   int get cartCount => state.cart.fold(0, (sum, e) => sum + e.quantity);
 
   Future<List<Product>> fetchMyListings() async {
@@ -438,7 +435,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
         .fold<int>(0, (sum, o) => sum + o.quantity);
   }
 
-  // ── Convert ───────//
+  //Convert
   Product _productFromModel(ProductModel m) {
     return Product(
       id: m.id,
@@ -457,7 +454,7 @@ class MarketplaceNotifier extends StateNotifier<MarketplaceState> {
   }
 }
 
-// ── Provider ─────//
+//Provider
 final marketplaceProvider =
     StateNotifierProvider<MarketplaceNotifier, MarketplaceState>(
   (ref) => MarketplaceNotifier(),

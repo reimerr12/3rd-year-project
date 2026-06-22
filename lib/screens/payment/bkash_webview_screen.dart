@@ -3,28 +3,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../core/constants.dart';
 import '../../services/payment_service.dart';
 
-// ---------------------------------------------------------------------------
-// BkashWebViewScreen
-//
-// Opens the bKash-hosted payment page in a WebView.
-// Intercepts the callbackURL redirect to detect success/failure.
-// On success: calls executePayment() and pops with the trxID string.
-// On failure/cancel: pops with null.
-//
-// Usage:
-//   final trxId = await Navigator.push<String>(
-//     context,
-//     MaterialPageRoute(
-//       builder: (_) => BkashWebViewScreen(
-//         bkashUrl: paymentResult.bkashUrl,
-//         paymentId: paymentResult.paymentId,
-//         bn: _bn,
-//       ),
-//     ),
-//   );
-//   if (trxId != null) { /* success */ }
-// ---------------------------------------------------------------------------
-
 class BkashWebViewScreen extends StatefulWidget {
   final String bkashUrl;
   final String paymentId;

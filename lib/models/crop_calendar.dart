@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-// ─── Month helpers ───────────────────────────────────────────────────────────
+// ─── Month helpers
 
 const List<String> _monthNamesEn = [
   '',
@@ -204,9 +204,9 @@ class CropCalendar {
   final String id;
   final String cropNameEn;
   final String cropNameBn;
-  final String? division; // null = all Bangladesh
-  final List<int> sowMonths; // 1–12
-  final List<int> harvestMonths; // 1–12
+  final String? division;
+  final List<int> sowMonths;
+  final List<int> harvestMonths;
   final String? avgYield;
   final String? notesEn;
   final String? notesBn;

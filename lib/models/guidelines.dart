@@ -1,7 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ─── DART DATA MODEL STRUCTURES ───
-
 class CropGuideline {
   final String id;
   final String nameEn;
@@ -33,7 +31,6 @@ class CropGuideline {
         .map((e) => CropInfection.fromJson(e))
         .toList();
 
-    // ─── DYNAMIC SUPABASE STORAGE RESOLVER ───
     String? resolvedCoverImage = json['cover_image'];
     if (resolvedCoverImage != null && resolvedCoverImage.isNotEmpty) {
       final fileName = resolvedCoverImage.split('/').last;
@@ -128,7 +125,6 @@ class CropInfection {
   });
 
   factory CropInfection.fromJson(Map<String, dynamic> json) {
-    // Read directly from what actually exists in your DB schema columns
     final rawRemedyEn = json['remedy_en'] ?? '';
     final rawRemedyBn = json['remedy_bn'] ?? '';
 
@@ -140,7 +136,6 @@ class CropInfection {
       symptomsBn: json['symptoms_bn'] ?? '',
       remedyEn: rawRemedyEn,
       remedyBn: rawRemedyBn,
-      // Safe fallback assignment so both UI fields get populated with text data
       remedyDetailsEn: json['remedy_details_en'] ?? rawRemedyEn,
       remedyDetailsBn: json['remedy_details_bn'] ?? rawRemedyBn,
     );

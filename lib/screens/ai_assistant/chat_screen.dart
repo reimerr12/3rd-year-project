@@ -4,18 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../services/ai_service.dart';
 
-// ---------------------------------------------------------------------------
 // Providers
-// ---------------------------------------------------------------------------
-
 final chatLangProvider = StateProvider<bool>((ref) => true);
 
 final chatMessagesProvider = StateProvider<List<ChatMessage>>((ref) => []);
 
-// ---------------------------------------------------------------------------
 // ChatScreen
-// ---------------------------------------------------------------------------
-
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
 
@@ -86,7 +80,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final errorText = inBengali
           ? 'কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন।'
           : 'Something went wrong. Please try again.';
-
       final errorMsg = ChatMessage(
         role: MessageRole.model,
         text: errorText,
@@ -341,9 +334,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Message bubble
-// ---------------------------------------------------------------------------
 
 class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
@@ -429,9 +420,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Typing indicator
-// ---------------------------------------------------------------------------
 
 class _TypingIndicator extends StatefulWidget {
   @override

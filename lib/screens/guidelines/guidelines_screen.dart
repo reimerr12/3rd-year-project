@@ -9,8 +9,6 @@ import '../../models/guidelines.dart';
 import '../../providers/guidelines_provider.dart';
 import '../../providers/lang_provider.dart';
 
-// guidelinesLangProvider now derives from langProvider — always mirrors the global toggle.
-// It's a Provider<bool> (read-only), not a StateProvider.
 final guidelinesLangProvider = Provider<bool>((ref) => ref.watch(langProvider));
 
 class GuidelinesScreen extends ConsumerStatefulWidget {
@@ -35,7 +33,6 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // isBangla is now derived from the global langProvider via guidelinesLangProvider
     final isBangla = ref.watch(guidelinesLangProvider);
     final asyncGuidelines = ref.watch(fetchGuidelinesProvider);
 
@@ -50,7 +47,6 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
               fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        // No language toggle — controlled globally from home screen
       ),
       body: Column(
         children: [

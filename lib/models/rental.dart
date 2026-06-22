@@ -17,9 +17,6 @@ enum EquipmentType {
     return null;
   }
 }
-// ---------------------------------------------------------------------------
-// Booking status helpers
-// ---------------------------------------------------------------------------
 
 enum BookingStatus {
   pending('pending', 'অপেক্ষমান', 'Pending'),
@@ -41,10 +38,6 @@ enum BookingStatus {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Payment status helpers
-// ---------------------------------------------------------------------------
-
 enum PaymentStatus {
   pending('pending', 'অপেক্ষমান', 'Pending'),
   paid('paid', 'পরিশোধিত', 'Paid'),
@@ -62,10 +55,6 @@ enum PaymentStatus {
     return PaymentStatus.pending;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Filter state — used by RentalNotifier to drive the browse tab
-// ---------------------------------------------------------------------------
 
 class RentalFilter {
   final String? division;
@@ -92,10 +81,6 @@ class RentalFilter {
 }
 
 const _sentinel = Object();
-
-// ---------------------------------------------------------------------------
-// Bangladesh divisions list (used in filter dropdown)
-// ---------------------------------------------------------------------------
 
 const kBangladeshDivisions = [
   'Dhaka',

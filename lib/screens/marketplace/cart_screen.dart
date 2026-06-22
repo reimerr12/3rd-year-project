@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/lang_provider.dart';
@@ -10,9 +9,6 @@ String _t(bool bn, String bangla, String english) => bn ? bangla : english;
 
 String _price(bool bn, double amount) =>
     bn ? '৳${amount.toStringAsFixed(0)}' : 'Taka ${amount.toStringAsFixed(0)}';
-
-String _price2(bool bn, double amount) =>
-    bn ? '৳${amount.toStringAsFixed(2)}' : 'Taka ${amount.toStringAsFixed(2)}';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -221,7 +217,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                             color: Colors.grey.shade600, fontSize: 13),
                       ),
                       Text(
-                        _price2(bn, total),
+                        _price(bn, total),
                         style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,

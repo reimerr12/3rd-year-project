@@ -16,6 +16,7 @@ class OtpScreen extends ConsumerStatefulWidget {
 class _OtpScreenState extends ConsumerState<OtpScreen> {
   final List<TextEditingController> _controllers =
       List.generate(8, (_) => TextEditingController());
+
   final List<FocusNode> _focusNodes = List.generate(8, (_) => FocusNode());
 
   bool _isLoading = false;

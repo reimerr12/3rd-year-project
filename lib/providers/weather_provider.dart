@@ -3,12 +3,10 @@ import 'package:geolocator/geolocator.dart';
 import '../models/weather.dart';
 import '../services/weather_service.dart';
 
-/// Application exposure channel for referencing data-tree dependencies across screens.
 final weatherProvider =
     AsyncNotifierProvider<WeatherNotifier, WeatherData>(WeatherNotifier.new);
 
 class WeatherNotifier extends AsyncNotifier<WeatherData> {
-  // Direct injection interface linking to our new weather service component
   final WeatherService _service = WeatherService();
   Map<String, dynamic>? rawForecast;
   @override
@@ -16,17 +14,14 @@ class WeatherNotifier extends AsyncNotifier<WeatherData> {
     return _fetchPipeline();
   }
 
-  /// Pull event controller designed to flush existing memory entries and pull fresh remote sheets.
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _fetchPipeline());
   }
 
-  /// Interlinks hardware location tracking updates to network execution loops.
   Future<WeatherData> _fetchPipeline() async {
     final pos = await _determineLocation();
 
-    // Runs concurrent fetch tasks through our clean WeatherService channels
     final currentRaw =
         await _service.fetchCurrentWeather(pos.latitude, pos.longitude);
     final forecastRaw =
@@ -45,7 +40,6 @@ class WeatherNotifier extends AsyncNotifier<WeatherData> {
     );
   }
 
-  /// Recompiles standard raw logs into structured 24-hour individual calendar slices.
   List<DailyForecast> _buildAggregatedDaily(List<HourlyWeather> hours) {
     final Map<String, List<HourlyWeather>> intervals = {};
     for (var h in hours) {
@@ -57,7 +51,6 @@ class WeatherNotifier extends AsyncNotifier<WeatherData> {
         .toList();
   }
 
-  /// System position tracker with absolute safety backups to avoid device lockups.
   Future<Position> _determineLocation() async {
     final fallback = Position(
       latitude: 24.8949,

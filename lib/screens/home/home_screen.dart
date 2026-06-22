@@ -294,7 +294,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         )
                       : _buildProductGrid(previewProducts, bn),
-              // Extra bottom padding so content clears the floating nav
               const SizedBox(height: 110),
             ],
           ),
@@ -306,9 +305,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // -------------------------------------------------------------------------
   // TOP BAR
-  // -------------------------------------------------------------------------
   Widget _buildTopBar(
       BuildContext context, String userName, String dateStr, bool bn) {
     return Container(
@@ -382,9 +379,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // -------------------------------------------------------------------------
   // WEATHER SECTION
-  // -------------------------------------------------------------------------
+
   Widget _buildWeatherSection(BuildContext context, bool bn) {
     final weatherAsync = ref.watch(weatherProvider);
 
@@ -559,9 +555,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // -------------------------------------------------------------------------
   // SECTION HEADER
-  // -------------------------------------------------------------------------
   Widget _buildSectionHeader(String title, String action,
       {VoidCallback? onActionTap}) {
     return Padding(
@@ -738,9 +732,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // -------------------------------------------------------------------------
   // SERVICES GRID
-  // -------------------------------------------------------------------------
+
   Widget _buildServicesGrid(bool bn) {
     final services = <Map<String, dynamic>>[
       {
@@ -811,9 +804,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // -------------------------------------------------------------------------
   // PRODUCT GRID
-  // -------------------------------------------------------------------------
   Widget _buildProductGrid(List<Product> products, bool bn) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -943,9 +934,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // -------------------------------------------------------------------------
   // FLOATING BOTTOM NAV
-  // -------------------------------------------------------------------------
   Widget _buildFloatingNav(bool bn) {
     final items = [
       (icon: Icons.home_rounded, label: _t(bn, 'হোম', 'Home')),
@@ -1021,9 +1010,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // PROMO CAROUSEL
-// ---------------------------------------------------------------------------
 class _PromoImageCarousel extends StatefulWidget {
   const _PromoImageCarousel();
 

@@ -2,9 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_service.dart';
 
-// ---------------------------------------------------------------------------
 // State
-// ---------------------------------------------------------------------------
 
 enum AuthStatus { loading, unauthenticated, authenticated }
 
@@ -31,16 +29,12 @@ class AuthState {
   bool get isUnauthenticated => status == AuthStatus.unauthenticated;
 }
 
-// ---------------------------------------------------------------------------
 // Notifier
-// ---------------------------------------------------------------------------
 
 class AuthNotifier extends AsyncNotifier<AuthState> {
   late SupabaseService _service;
   StreamSubscription<AppUser?>? _authSub;
 
-  // Flag to prevent the stream listener from overwriting state
-  // while build() is still resolving the initial user.
   bool _buildComplete = false;
 
   @override
@@ -88,14 +82,11 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Providers
-// ---------------------------------------------------------------------------
 
 final authProvider =
     AsyncNotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
 
-/// True while the cold-start session check is in flight — show splash/loading.
 final authLoadingProvider = Provider<bool>((ref) {
   return ref.watch(authProvider).maybeWhen(
         loading: () => true,

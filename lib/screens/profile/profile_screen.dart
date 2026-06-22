@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';

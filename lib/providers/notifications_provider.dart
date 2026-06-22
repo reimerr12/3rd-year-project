@@ -3,15 +3,10 @@ import '../services/notification_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/weather_provider.dart';
 
-// ---------------------------------------------------------------------------
 // Language toggle
-// ---------------------------------------------------------------------------
+final notifLangProvider = StateProvider<bool>((ref) => true);
 
-final notifLangProvider = StateProvider<bool>((ref) => true); // true = BN
-
-// ---------------------------------------------------------------------------
 // Notifications list
-// ---------------------------------------------------------------------------
 
 final notificationsProvider =
     AsyncNotifierProvider<NotificationsNotifier, List<NotificationModel>>(
@@ -25,8 +20,6 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   Future<List<NotificationModel>> build() async {
     final user = ref.watch(currentUserProvider);
     if (user == null) return [];
-
-    // Trigger generation on first load — fire and forget
     _generateInBackground(user.id, user.division);
 
     return _service.fetchNotifications(user.id);
@@ -34,8 +27,6 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
 
   Future<void> _generateInBackground(String userId, String? division) async {
     try {
-      // Get raw OWM forecast data for weather alerts
-      // WeatherNotifier exposes rawForecast — see note below
       final weatherNotifier = ref.read(weatherProvider.notifier);
       final rawForecast = weatherNotifier.rawForecast;
 
@@ -45,11 +36,10 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
         userDivision: division,
       );
 
-      // Refresh list after generation
       final updated = await _service.fetchNotifications(userId);
       state = AsyncData(updated);
     } catch (_) {
-      // Silent — notifications are non-critical
+      //
     }
   }
 
@@ -105,10 +95,7 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Unread count — drives bell badge on home screen
-// ---------------------------------------------------------------------------
-
 final unreadCountProvider = Provider<int>((ref) {
   final notifs = ref.watch(notificationsProvider);
   return notifs.when(

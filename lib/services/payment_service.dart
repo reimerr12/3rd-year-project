@@ -1,10 +1,7 @@
 import 'dart:convert';
+// ignore: depend_on_referenced_packages
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
-
-// ---------------------------------------------------------------------------
-// Result types
-// ---------------------------------------------------------------------------
 
 class BkashTokenResult {
   final String idToken;
@@ -29,24 +26,14 @@ class BkashExecuteResult {
   });
 }
 
-// ---------------------------------------------------------------------------
-// BkashPaymentService
-// ---------------------------------------------------------------------------
-
 class BkashPaymentService {
   BkashPaymentService._();
   static final BkashPaymentService instance = BkashPaymentService._();
   factory BkashPaymentService() => instance;
 
-  // Cached token — refreshed per payment session
   String? _idToken;
   // ignore: unused_field
   String? _refreshToken;
-
-  // =========================================================================
-  // STEP 1 — Grant Token
-  // Call once at the start of each payment session.
-  // =========================================================================
 
   Future<BkashTokenResult> grantToken() async {
     final uri = Uri.parse(
@@ -91,11 +78,7 @@ class BkashPaymentService {
     return BkashTokenResult(idToken: idToken, refreshToken: refreshToken);
   }
 
-  // =========================================================================
-  // STEP 2 — Create Payment
-  // Returns the bKash-hosted payment URL to load in the WebView.
-  // =========================================================================
-
+  // Create Payment
   Future<BkashPaymentResult> createPayment({
     required double amount,
     required String merchantInvoiceNumber,
@@ -119,7 +102,7 @@ class BkashPaymentService {
             'x-app-key': AppConstants.bkashAppKey,
           },
           body: jsonEncode({
-            'mode': '0011', // Checkout URL mode
+            'mode': '0011',
             'payerReference': payerReference ?? '01770618575',
             'callbackURL': AppConstants.bkashCallbackUrl,
             'amount': amount.toStringAsFixed(2),
@@ -156,10 +139,7 @@ class BkashPaymentService {
     return BkashPaymentResult(paymentId: paymentId, bkashUrl: bkashUrl);
   }
 
-  // =========================================================================
-  // STEP 3 — Execute Payment
-  // Call after WebView redirects back with paymentID in the callback URL.
-  // =========================================================================
+  //Execute Payment
 
   Future<BkashExecuteResult> executePayment(String paymentId) async {
     if (_idToken == null) {
@@ -211,10 +191,6 @@ class BkashPaymentService {
     );
   }
 
-  // =========================================================================
-  // STEP 4 — Query Payment (optional — for status verification)
-  // =========================================================================
-
   Future<Map<String, dynamic>> queryPayment(String paymentId) async {
     if (_idToken == null) {
       throw Exception('bKash queryPayment: no active token');
@@ -240,15 +216,6 @@ class BkashPaymentService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  // =========================================================================
-  // HELPER — Full payment flow
-  // Call this from payment_screen.dart and booking_screen.dart.
-  // Returns the trxID on success, throws on failure.
-  // =========================================================================
-
-  /// Runs grantToken + createPayment and returns the result.
-  /// The caller must open [BkashWebViewScreen] with the returned [bkashUrl].
-  /// After WebView completes, call [executePayment] with the returned paymentId.
   Future<BkashPaymentResult> initiate({
     required double amount,
     required String invoiceNumber,
@@ -260,18 +227,10 @@ class BkashPaymentService {
     );
   }
 
-  // =========================================================================
-  // HELPER — Generate unique invoice number
-  // =========================================================================
-
   static String generateInvoiceNumber(String prefix) {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return '$prefix$ts';
   }
-
-  // =========================================================================
-  // Clear cached tokens (call on logout)
-  // =========================================================================
 
   void clearTokens() {
     _idToken = null;

@@ -2,9 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_service.dart';
 import '../models/rental.dart';
 
-// ---------------------------------------------------------------------------
 // Filter provider
-// ---------------------------------------------------------------------------
 
 final rentalFilterProvider =
     StateNotifierProvider<RentalFilterNotifier, RentalFilter>(
@@ -27,10 +25,7 @@ class RentalFilterNotifier extends StateNotifier<RentalFilter> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// browse tab  available equipment (filtered)
-// ---------------------------------------------------------------------------
-
+// browse tab
 final browseEquipmentProvider =
     AsyncNotifierProvider<BrowseEquipmentNotifier, List<EquipmentModel>>(
   BrowseEquipmentNotifier.new,
@@ -84,10 +79,7 @@ class BrowseEquipmentNotifier extends AsyncNotifier<List<EquipmentModel>> {
   bool get hasMore => _hasMore;
 }
 
-// -------------------------------------------------------------
-// Owner tab — own equipment listings
-// ---------------------------------------------------------------------------
-
+// Owner tab
 final myEquipmentProvider =
     AsyncNotifierProvider<MyEquipmentNotifier, List<EquipmentModel>>(
   MyEquipmentNotifier.new,
@@ -142,10 +134,7 @@ class MyEquipmentNotifier extends AsyncNotifier<List<EquipmentModel>> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Renter's bookings
-// ---------------------------------------------------------------------------
-
 final myBookingsProvider =
     AsyncNotifierProvider<MyBookingsNotifier, List<BookingModel>>(
   MyBookingsNotifier.new,
@@ -182,10 +171,7 @@ class MyBookingsNotifier extends AsyncNotifier<List<BookingModel>> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Owner's incoming bookings
-// ---------------------------------------------------------------------------
-
 final ownerBookingsProvider =
     AsyncNotifierProvider<OwnerBookingsNotifier, List<BookingModel>>(
   OwnerBookingsNotifier.new,

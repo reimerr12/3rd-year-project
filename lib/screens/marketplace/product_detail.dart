@@ -266,7 +266,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ── Info chips ─────────────────────────────────────────
+          // Info chips
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -310,7 +310,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── Quantity selector ──────────────────────────────────
+          // Quantity selector
           Text(
             _t(bn, 'পরিমাণ নির্বাচন করুন', 'Select Quantity'),
             style: const TextStyle(
@@ -458,7 +458,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+//Helpers
 class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;

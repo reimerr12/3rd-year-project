@@ -74,7 +74,7 @@ class CalendarState {
 
 const _s = Object();
 
-// ─── Notifier ─────────────────────────────────────────────────────────────────
+//Notifier
 
 class CalendarNotifier extends AsyncNotifier<CalendarState> {
   @override
@@ -174,19 +174,15 @@ class CalendarNotifier extends AsyncNotifier<CalendarState> {
     goToMonth(dt.year, dt.month);
   }
 
-  /// Select a day
   void selectDay(int day) =>
       state = state.whenData((s) => s.copyWith(selectedDay: day));
 
-  /// Select crop category filter
   void selectCategory(CropCategory? cat) =>
       state = state.whenData((s) => s.copyWith(selectedCategory: cat));
 
-  /// Toggle language
   void toggleLanguage() =>
       state = state.whenData((s) => s.copyWith(isBangla: !s.isBangla));
 
-  /// Jump to today
   void goToToday() {
     final now = DateTime.now();
     state = state.whenData((s) => s.copyWith(

@@ -1,12 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../models/rental.dart';
@@ -22,9 +20,8 @@ Future<LatLng?> _geocodeLocation(String query) async {
     final encoded = Uri.encodeComponent(query);
     final url =
         'https://maps.googleapis.com/maps/api/geocode/json?address=$encoded&region=BD&key=${AppConstants.googleMapsApiKey}';
-    final res = await http.get(Uri.parse(url));
-    if (res.statusCode != 200) return null;
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    final res = await Dio().get(url);
+    final body = res.data as Map<String, dynamic>;
     final results = body['results'] as List?;
     if (results == null || results.isEmpty) return null;
     final loc = (results.first as Map)['geometry']['location'];
@@ -1329,9 +1326,7 @@ class _AddEquipmentSheetState extends ConsumerState<_AddEquipmentSheet> {
   }
 }
 
-// ---------------------------------------------------------------------------
 // Shared small widgets
-// ---------------------------------------------------------------------------
 class _SheetField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
