@@ -6,7 +6,7 @@ import '../../models/weather.dart';
 import '../../providers/weather_provider.dart';
 import '../../providers/lang_provider.dart';
 
-// Emoji helper — day/night aware
+// Emoji helper
 
 String _weatherEmoji(String iconCode) {
   if (iconCode.length < 2) return '🌤️';
