@@ -68,7 +68,7 @@ class SoilEntry {
   }
 }
 
-// ── Provider ──────────────────────────────────────────────────
+//Provider
 final _soilProvider = FutureProvider.family<List<SoilEntry>, String>(
   (ref, division) async {
     final data = await Supabase.instance.client
@@ -82,7 +82,7 @@ final _soilProvider = FutureProvider.family<List<SoilEntry>, String>(
   },
 );
 
-// ── Screen ────────────────────────────────────────────────────
+//Screen
 class SoilScreen extends ConsumerStatefulWidget {
   const SoilScreen({super.key});
 
@@ -105,7 +105,6 @@ class _SoilScreenState extends ConsumerState<SoilScreen> {
   String _selectedDivision = 'ঢাকা';
   bool _isBn = true;
 
-  // Soil type → icon mapping
   IconData _soilIcon(String soilType) {
     if (soilType.contains('এঁটেল')) return Icons.water_drop_outlined;
     if (soilType.contains('দোআঁশ')) return Icons.grass_outlined;
@@ -120,7 +119,6 @@ class _SoilScreenState extends ConsumerState<SoilScreen> {
     return Icons.foundation_outlined;
   }
 
-  // Soil type → accent color
   Color _soilColor(String soilType) {
     if (soilType.contains('এঁটেল')) return const Color(0xFF5C6BC0);
     if (soilType.contains('দোআঁশ')) return AppTheme.primaryGreen;
@@ -143,7 +141,7 @@ class _SoilScreenState extends ConsumerState<SoilScreen> {
       backgroundColor: const Color(0xFFF4F6F4),
       body: CustomScrollView(
         slivers: [
-          // ── App Bar ──────────────────────────────────────────
+          //App Bar
           SliverAppBar(
             expandedHeight: 160,
             pinned: true,
@@ -235,7 +233,7 @@ class _SoilScreenState extends ConsumerState<SoilScreen> {
             ),
           ),
 
-          // ── Division Selector ────────────────────────────────
+          //Division Selector
           SliverToBoxAdapter(
             child: Container(
               color: Colors.white,
@@ -287,7 +285,7 @@ class _SoilScreenState extends ConsumerState<SoilScreen> {
             ),
           ),
 
-          // ── Division header ──────────────────────────────────
+          // Division header
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
@@ -309,7 +307,7 @@ class _SoilScreenState extends ConsumerState<SoilScreen> {
             ),
           ),
 
-          // ── Content ──────────────────────────────────────────
+          // Content
           soilAsync.when(
             loading: () => const SliverFillRemaining(
               child: Center(
@@ -389,7 +387,6 @@ class _SoilScreenState extends ConsumerState<SoilScreen> {
           ),
         ],
       ),
-      // Bottom nav consistent with rest of app
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -458,7 +455,7 @@ class _SoilScreenState extends ConsumerState<SoilScreen> {
   }
 }
 
-// ── Blog Card ─────────────────────────────────────────────────
+// Blog Card
 class _SoilBlogCard extends StatefulWidget {
   final SoilEntry entry;
   final bool isBn;
@@ -500,7 +497,7 @@ class _SoilBlogCardState extends State<_SoilBlogCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ───────────────────────────────────────────
+          //Header
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -517,7 +514,6 @@ class _SoilBlogCardState extends State<_SoilBlogCard> {
             padding: const EdgeInsets.all(18),
             child: Row(
               children: [
-                // Soil icon circle
                 Container(
                   width: 52,
                   height: 52,
@@ -557,7 +553,6 @@ class _SoilBlogCardState extends State<_SoilBlogCard> {
             ),
           ),
 
-          // ── Stats row ─────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
             child: Row(
@@ -579,7 +574,6 @@ class _SoilBlogCardState extends State<_SoilBlogCard> {
             ),
           ),
 
-          // ── Recommended crops ─────────────────────────────────
           if (e.recommendedCrops.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
@@ -632,7 +626,6 @@ class _SoilBlogCardState extends State<_SoilBlogCard> {
             ),
           ],
 
-          // ── Tips (blog body) ──────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
             child: Column(
@@ -654,7 +647,6 @@ class _SoilBlogCardState extends State<_SoilBlogCard> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Show preview or full text based on expanded state
                 AnimatedCrossFade(
                   firstChild: Text(
                     widget.isBn ? e.tipsBn : e.tipsEn,
@@ -683,7 +675,6 @@ class _SoilBlogCardState extends State<_SoilBlogCard> {
             ),
           ),
 
-          // ── Read more / less ──────────────────────────────────
           GestureDetector(
             onTap: () => setState(() => _expanded = !_expanded),
             child: Padding(
@@ -718,7 +709,6 @@ class _SoilBlogCardState extends State<_SoilBlogCard> {
   }
 }
 
-// ── Stat Chip ─────────────────────────────────────────────────
 class _StatChip extends StatelessWidget {
   final IconData icon;
   final String label;
